@@ -43,7 +43,7 @@ type
     step: Step
     wait: Duration
     detail: string
-    authFailure: bool
+    midRunRetry: bool ## keep retrying after startup
 
 func topics*(s: Session): seq[string] =
   ## The topics this session uses: the configured ones, else every topic the server lists.
@@ -100,7 +100,7 @@ proc fetchConfig(s: Session, attempt: int): Future[StepResult] {.async: (raises:
     StepResult(
       step: Step.Fatal,
       detail: "the server rejected the token (" & $reply.status & ")",
-      authFailure: true,
+      midRunRetry: true,
     )
   of 429:
     StepResult(
@@ -148,20 +148,24 @@ proc putSession(s: Session, attempt: int): Future[StepResult] {.async: (raises: 
     StepResult(
       step: Step.Fatal,
       detail: "the server rejected the token (" & $reply.status & ")",
-      authFailure: true,
+      midRunRetry: true,
     )
   of 422:
-    StepResult(step: Step.Fatal, detail: "registration refused: " & code)
+    StepResult(
+      step: Step.Fatal,
+      detail: "registration refused: " & code,
+      midRunRetry: code == "clock_skew",
+    )
   else:
     warn "unexpected reply to registration", status = reply.status
     StepResult(step: Step.Retry, wait: backoffFor(attempt))
 
 proc establish*(
-    s: Session, refetchConfig: bool, giveUpOnAuth: bool
+    s: Session, refetchConfig: bool, startup: bool
 ): Future[Result[void, string]] {.async: (raises: [CancelledError]).} =
   ## Fetches the config when needed, then registers. Transient failures retry with
   ## backoff for as long as it takes. A fatal reply returns Err, except that
-  ## `giveUpOnAuth = false` keeps retrying after a 401 or 403.
+  ## `startup = false` keeps retrying after a 401, a 403 or a 422 `clock_skew`.
   var attempt = 0
   var needConfig = refetchConfig or not s.hasConfig
   while not isRequested():
@@ -182,7 +186,7 @@ proc establish*(
       inc attempt
       await sleepAsync(res.wait)
     of Step.Fatal:
-      if giveUpOnAuth or not res.authFailure:
+      if startup or not res.midRunRetry:
         return err(res.detail)
       error "registration failed", reason = res.detail
       inc attempt

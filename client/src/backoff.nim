@@ -19,4 +19,4 @@ func backoffDelay*(attempt: int, jitter: float): Duration =
 
 func clampRetryAfter*(hintMs: int64): Duration =
   ## A server retry hint, held within [1 s, 300 s].
-  min(max(milliseconds(hintMs), RetryAfterMin), RetryAfterMax)
+  milliseconds(min(max(hintMs, RetryAfterMin.milliseconds), RetryAfterMax.milliseconds))

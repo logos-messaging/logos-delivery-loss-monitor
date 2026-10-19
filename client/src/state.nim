@@ -14,9 +14,16 @@ type
   ClientState* = ref object
     buffer*: RecordBuffer
     counters*: Counters
+    closed: bool
 
 func newClientState*(bufferRecords: int): ClientState =
   ClientState(buffer: RecordBuffer.init(bufferRecords))
 
 proc enqueue*(s: ClientState, r: Record) =
-  s.buffer.push(r)
+  ## Queues `r` unless the state is closed.
+  if not s.closed:
+    s.buffer.push(r)
+
+proc close*(s: ClientState) =
+  ## Makes every later `enqueue` a no-op.
+  s.closed = true

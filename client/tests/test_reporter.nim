@@ -35,6 +35,8 @@ suite "reporter backoff":
     check clampRetryAfter(7000) == 7.seconds
     check clampRetryAfter(9_000_000) == 300.seconds
     check clampRetryAfter(-5) == 1.seconds
+    check clampRetryAfter(high(int64)) == 300.seconds
+    check clampRetryAfter(low(int64)) == 1.seconds
 
 suite "reporter reactions":
   test "each status maps to one reaction":

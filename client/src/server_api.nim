@@ -6,7 +6,9 @@
 import std/[json, strutils]
 import chronos, chronos/apps/http/httpclient, results, stew/byteutils
 
-const RequestTimeout* = 20.seconds
+const
+  RequestTimeout* = 20.seconds
+  MaxRetryAfterSec = 86_400'i64
 
 type
   ApiReply* = object
@@ -72,7 +74,8 @@ proc call*(
       let retryAfter = response.headers.getString("retry-after")
       if retryAfter.len > 0:
         try:
-          reply.retryAfterMs = Opt.some(parseBiggestInt(retryAfter) * 1000)
+          reply.retryAfterMs =
+            Opt.some(min(max(parseBiggestInt(retryAfter), 0), MaxRetryAfterSec) * 1000)
         except ValueError:
           discard
       if reply.status in 300 .. 399:

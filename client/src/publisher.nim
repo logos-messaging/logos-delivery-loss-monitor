@@ -167,5 +167,10 @@ proc run*(p: Publisher) {.async: (raises: [CancelledError]).} =
   for i, topic in p.topics:
     loops.add(p.runTopic(topic, period * i div max(p.topics.len, 1)))
   loops.add(p.runSweeper())
-  for f in loops:
-    await f
+  try:
+    for f in loops:
+      await f
+  except CancelledError as e:
+    for f in loops:
+      await f.cancelAndWait()
+    raise e
