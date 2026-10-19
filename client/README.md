@@ -7,11 +7,13 @@ Publishes probe messages on a Logos Delivery network and reports what it publish
 The Logos Delivery tree is the submodule `vendor/logos-delivery`, pinned to `v0.39.2`.
 
 ```
-git submodule update --init client/vendor/logos-delivery
+git submodule update --init --recursive client/vendor/logos-delivery
 make -C client lossmon-client     # build/lossmon-client
 make -C client test               # unit tests
-docker build --target prod --build-arg LD_VERSION=v0.39.2 client
+docker build --platform linux/amd64 --target prod --build-arg LD_VERSION=v0.39.2 client
 ```
+
+`--recursive` is required: `librln` is built from the nested `zerokit` submodule. The image builds for `linux/amd64` only; pass `--platform linux/amd64` on arm64 hosts.
 
 `make` builds the pinned Nim toolchain and dependencies on first use, then `librln` from the vendored zerokit (or downloads the prebuilt archive on glibc hosts). Set `LOG_LEVEL=INFO` to build with the node's info logging.
 
