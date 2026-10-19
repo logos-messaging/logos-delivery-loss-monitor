@@ -37,4 +37,3 @@ COPY --from=binary /app/build/lossmon-client /usr/local/bin/lossmon-client
 USER lossmon
 VOLUME /data
 ENTRYPOINT ["/usr/local/bin/lossmon-client"]
-CMD ["--help"]
