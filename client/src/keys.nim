@@ -5,8 +5,6 @@
 import results
 import ./probe
 
-const PreviousKeyTtlMs* = 11 * 60 * 1000'i64 ## default window plus grace
-
 type ProbeKeys* = object
   ready: bool
   current: ProbeKey
@@ -20,8 +18,9 @@ func current*(k: ProbeKeys): ProbeKey =
   ## Only meaningful once `isReady`.
   k.current
 
-func rotate*(k: var ProbeKeys, key: ProbeKey, nowMs: int64) =
-  ## The first call sets the key. Later calls with a different key demote the old one.
+func rotate*(k: var ProbeKeys, key: ProbeKey, nowMs, previousTtlMs: int64) =
+  ## The first call sets the key. Later calls with a different key demote the old one
+  ## for `previousTtlMs`.
   if not k.ready:
     k.ready = true
     k.current = key
@@ -29,7 +28,7 @@ func rotate*(k: var ProbeKeys, key: ProbeKey, nowMs: int64) =
   if ctEqual(key, k.current):
     return
   k.previous = Opt.some(k.current)
-  k.previousUntilMs = nowMs + PreviousKeyTtlMs
+  k.previousUntilMs = nowMs + previousTtlMs
   k.current = key
 
 func verifying*(k: ProbeKeys, nowMs: int64): seq[ProbeKey] =

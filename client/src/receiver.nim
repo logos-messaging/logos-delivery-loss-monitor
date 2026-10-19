@@ -10,9 +10,6 @@ import ./[clock, keys, probe, receipts, records, session, state]
 logScope:
   topics = "lossmon receiver"
 
-const ReceiptMaxAgeMs* = 10 * 60 * 1000'i64
-  ## A receipt older than the server's default window can never count as delivered.
-
 type Receiver* = ref object
   state: ClientState
   session: Session
@@ -24,7 +21,7 @@ proc newReceiver*(state: ClientState, session: Session, topics: seq[string]): Re
     state: state,
     session: session,
     topics: topics.toHashSet(),
-    receipts: ReceiptTable.init(),
+    receipts: ReceiptTable.init(session.cfg.receiptMaxAgeMs),
   )
 
 proc markOwn*(r: Receiver, probeId: string, nowMs: int64) =
@@ -36,7 +33,7 @@ proc handle(r: Receiver, e: MessageReceivedEvent) =
     return
   let at = nowMs()
   let msgTsMs = e.message.timestamp div 1_000_000
-  if at - msgTsMs > ReceiptMaxAgeMs:
+  if at - msgTsMs > r.session.cfg.receiptMaxAgeMs:
     return
   let decoded = inspectProbe(e.message.payload, r.session.keys.verifying(at))
   case decoded.kind
