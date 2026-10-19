@@ -4,6 +4,7 @@ x-hardened: &hardened
   restart: unless-stopped
   cap_drop: [ALL]
   security_opt: ["no-new-privileges:true"]
+  logging: {driver: local, options: {max-size: "10m", max-file: "5"}}
 
 services:
   server:
@@ -15,8 +16,8 @@ services:
     ports:
       - "127.0.0.1:${LOSSMON_SERVER_PORT:-8080}:8080"
     environment:
-      LOSSMON_TOKENS_FILE: /run/secrets/lossmon_tokens
-      LOSSMON_PROBE_KEY_FILE: /run/secrets/lossmon_probe_key
+      LOSSMON_TOKENS_FILE: /run/lossmon/tokens
+      LOSSMON_PROBE_KEY_FILE: /run/lossmon/probe_key
       LOSSMON_PRESET: ${LOSSMON_PRESET:-logos.dev}
       LOSSMON_CLUSTER_ID: ${LOSSMON_CLUSTER_ID:-}
       LOSSMON_ALLOW_PRESET: ${LOSSMON_ALLOW_PRESET:-}
@@ -24,15 +25,18 @@ services:
       LOSSMON_LOCATIONS: ${LOSSMON_LOCATIONS:-af,as,eu,na,oc,sa}
       LOSSMON_MAX_RATE_PER_CLIENT: ${LOSSMON_MAX_RATE_PER_CLIENT:-1.0}
       LOSSMON_MAX_RATE_TOTAL: ${LOSSMON_MAX_RATE_TOTAL:-20}
+      LOSSMON_MAX_SESSIONS_PER_TOKEN: ${LOSSMON_MAX_SESSIONS_PER_TOKEN:-}
+      LOSSMON_MAX_SESSIONS: ${LOSSMON_MAX_SESSIONS:-}
+      LOSSMON_TOKEN_REQ_PER_SEC: ${LOSSMON_TOKEN_REQ_PER_SEC:-}
+      LOSSMON_TOKEN_RECORDS_PER_SEC: ${LOSSMON_TOKEN_RECORDS_PER_SEC:-}
       LOSSMON_WINDOW: ${LOSSMON_WINDOW:-10m}
       LOSSMON_GRACE: ${LOSSMON_GRACE:-30s}
       LOSSMON_HOLD: ${LOSSMON_HOLD:-10m}
       LOSSMON_RECEIVER_WARMUP: ${LOSSMON_RECEIVER_WARMUP:-30s}
       LOSSMON_MAX_CLOCK_OFFSET: ${LOSSMON_MAX_CLOCK_OFFSET:-60s}
       LOSSMON_LOSS_RATIO_WINDOW: ${LOSSMON_LOSS_RATIO_WINDOW:-1h}
-    secrets:
-      - lossmon_tokens
-      - lossmon_probe_key
+    volumes:
+      - ./secrets/server:/run/lossmon:ro
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9102/healthz"]
       interval: 10s
@@ -119,10 +123,6 @@ services:
         condition: service_healthy
 
 secrets:
-  lossmon_tokens:
-    file: ./secrets/tokens
-  lossmon_probe_key:
-    file: ./secrets/probe_key
   lossmon_listener_token:
     file: ./secrets/listener_token
 
