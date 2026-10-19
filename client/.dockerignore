@@ -1,0 +1,9 @@
+build
+nimcache
+vendor/logos-delivery/.git
+vendor/logos-delivery/build
+vendor/logos-delivery/nimcache
+vendor/logos-delivery/nimbledeps
+vendor/logos-delivery/nimble.paths
+vendor/logos-delivery/librln_*.a
+vendor/logos-delivery/vendor/zerokit/target
