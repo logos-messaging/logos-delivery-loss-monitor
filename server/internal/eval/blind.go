@@ -57,7 +57,7 @@ func (b *blindSet) pop() *blindEntry {
 	return e
 }
 
-// prune drops entries added more than ttl ago.
+// prune drops entries added more than ttl ago. ttl must outlast the longest publish-outcome lag.
 func (b *blindSet) prune(now, ttl int64) {
 	for len(b.fifo) > 0 && b.entries[b.fifo[0]].added+ttl <= now {
 		b.pop()

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func env(kv ...string) func(string) string {
@@ -23,7 +24,7 @@ func TestDefaults(t *testing.T) {
 	if c.Preset != "logos.dev" || c.ClusterID != 3 || c.Window.Minutes() != 10 || c.SessionIdleTimeout != c.Hold {
 		t.Fatalf("unexpected defaults: %+v", c)
 	}
-	if len(c.Locations) != 6 || c.MaxSessionsPerToken != 20 || c.MaxRateTotal != 20 {
+	if len(c.Locations) != 6 || c.MaxSessionsPerToken != 20 || c.MaxRateTotal != 20 || c.OutcomeLag != 32*time.Minute {
 		t.Fatalf("unexpected defaults: %+v", c)
 	}
 }
