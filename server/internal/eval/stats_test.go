@@ -174,3 +174,22 @@ func TestStatsAreRetainedOnlyForTheRetentionPeriod(t *testing.T) {
 		t.Fatalf("expected the bucket to be pruned, got %d", got)
 	}
 }
+
+func TestStatsDroppedReceiptBeforeOutcomeIsNotLost(t *testing.T) {
+	w := newWorld(t, func(c *config.Config) { c.MaxOrphans = 20 })
+	h := w.h
+	h.advance(time.Second)
+	h.send(w.a, h.rcv(0, "live"))
+	h.send(w.b, h.rcv(0, "live"))
+	for i := 1; i <= 25; i++ {
+		h.send(w.a, h.rcv(1000+i, "live"))
+	}
+	h.beats(outcomeLag, w.p, w.a, w.b)
+	h.send(w.p, h.pub(0))
+	h.settle(w.p, w.a, w.b)
+	tot := h.stats("").Totals
+	evicted := tot.Indeterminate[stats.ReasonIndex(metrics.ReasonEvicted)]
+	if tot.Lost != 0 || evicted != 2 {
+		t.Fatalf("lost = %d, evicted = %d, want 0 and 2", tot.Lost, evicted)
+	}
+}
