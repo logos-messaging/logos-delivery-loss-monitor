@@ -106,3 +106,20 @@ func TestCanonicalPreset(t *testing.T) {
 		}
 	}
 }
+
+func TestStatsRetention(t *testing.T) {
+	c, err := Load(env())
+	if err != nil || c.StatsRetention.Hours() != 24 {
+		t.Fatalf("default: %v %+v", err, c)
+	}
+	for _, v := range []string{"9m", "745h", "0s"} {
+		if _, err := Load(env("STATS_RETENTION", v)); err == nil {
+			t.Errorf("STATS_RETENTION=%s accepted", v)
+		}
+	}
+	for _, v := range []string{"10m", "72h", "744h"} {
+		if _, err := Load(env("STATS_RETENTION", v)); err != nil {
+			t.Errorf("STATS_RETENTION=%s: %v", v, err)
+		}
+	}
+}

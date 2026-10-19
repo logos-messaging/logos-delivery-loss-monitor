@@ -5,6 +5,7 @@ import (
 	"container/list"
 
 	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/metrics"
+	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/stats"
 )
 
 const (
@@ -167,6 +168,14 @@ func (c *Core) applyReceive(s *session, r *Record, corr, now int64) {
 	}
 }
 
+// addStats files d under the publish time of p, for the pair (p, r).
+func (c *Core) addStats(p *publish, r *session, d stats.Counts) {
+	l := c.m.Canonical(c.pairLabels(p, r))
+	pk := stats.PairKey{Topic: l.Topic, PubMode: l.PubMode, RecvMode: l.RecvMode, PubLoc: l.PubLoc, RecvLoc: l.RecvLoc, PubAnon: l.PubAnon}
+	ck := stats.ClientKey{PubToken: p.sess.token, PubClient: p.clientID, RecvToken: r.token, RecvClient: r.clientID, Topic: l.Topic}
+	c.stats.Add(p.tP, pk, ck, d)
+}
+
 // lateReceipt handles a receipt for a publish whose pairs are already decided.
 func (c *Core) lateReceipt(p *publish, s *session, r *Record) {
 	if r.Overflow {
@@ -174,6 +183,7 @@ func (c *Core) lateReceipt(p *publish, s *session, r *Record) {
 	}
 	if r.Hash != p.hash {
 		c.m.Replayed(p.topic, 1)
+		c.addStats(p, s, stats.Counts{Replayed: 1})
 		return
 	}
 	d := p.done[s.uid]
@@ -184,9 +194,11 @@ func (c *Core) lateReceipt(p *publish, s *session, r *Record) {
 	switch {
 	case d.kind == kindDelivered, d.kind == kindLost && d.late:
 		c.m.Duplicate(l, 1)
+		c.addStats(p, s, stats.Counts{Duplicate: 1})
 	case d.kind == kindLost:
 		d.late = true
 		c.m.Late(l)
+		c.addStats(p, s, stats.Counts{Late: 1})
 	}
 }
 
@@ -312,10 +324,17 @@ func (c *Core) record(p *publish, r *session, out outcome) {
 	d := &pairDone{kind: out.kind}
 	p.done[r.uid] = d
 	c.m.Replayed(p.topic, out.mismatch)
+	sd := stats.Counts{Replayed: int64(out.mismatch)}
 	switch out.kind {
 	case kindDelivered:
 		c.m.Delivered(l, out.source)
 		c.m.Duplicate(l, out.matched-1)
+		sd.Expected, sd.Duplicate = 1, int64(out.matched-1)
+		if out.source == "history" {
+			sd.DeliveredHistory = 1
+		} else {
+			sd.DeliveredLive = 1
+		}
 		if !p.queued {
 			if lat := out.first - p.sendAt; lat >= 0 {
 				c.m.Latency(p.labels.Mode, r.mode, out.source, float64(lat)/1000)
@@ -323,14 +342,20 @@ func (c *Core) record(p *publish, r *session, out outcome) {
 		}
 	case kindLost:
 		c.m.Lost(l)
+		sd.Expected, sd.Lost = 1, 1
 		if out.matched > 0 {
 			d.late = true
 			c.m.Late(l)
 			c.m.Duplicate(l, out.matched-1)
+			sd.Late, sd.Duplicate = 1, int64(out.matched-1)
 		}
 	default:
 		c.m.Indeterminate(l, out.reason)
+		if i := stats.ReasonIndex(out.reason); i >= 0 {
+			sd.Indeterminate[i] = 1
+		}
 	}
+	c.addStats(p, r, sd)
 }
 
 func (c *Core) tombstone(p *publish, now int64) {
@@ -370,6 +395,9 @@ func (c *Core) evictPending() {
 	}
 	for _, r := range p.pairs {
 		c.m.Indeterminate(c.pairLabels(p, r), metrics.ReasonEvicted)
+		var d stats.Counts
+		d.Indeterminate[stats.ReasonIndex(metrics.ReasonEvicted)] = 1
+		c.addStats(p, r, d)
 	}
 	c.dropPublish(p)
 }

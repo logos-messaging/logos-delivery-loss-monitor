@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/apierr"
+	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/stats"
 )
 
 // Clock supplies the evaluation clock in Unix milliseconds.
@@ -106,4 +107,12 @@ func (e *Engine) Ingest(ctx context.Context, token, id string, b *Batch) (res In
 		return IngestResult{}, err
 	}
 	return res, apiErr
+}
+
+// Stats submits a stats query.
+func (e *Engine) Stats(ctx context.Context, q stats.Query) (res stats.Result, apiErr *apierr.Error) {
+	if err := e.Do(ctx, func(c *Core, now int64) { res = c.Stats(now, q) }); err != nil {
+		return stats.Result{}, err
+	}
+	return res, nil
 }

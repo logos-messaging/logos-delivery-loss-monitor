@@ -42,6 +42,7 @@ type Config struct {
 	OutcomeLag         time.Duration
 	LossRatioWindow    time.Duration
 	SessionIdleTimeout time.Duration
+	StatsRetention     time.Duration
 
 	MaxSessions         int
 	MaxSessionsPerToken int
@@ -124,6 +125,7 @@ func Load(getenv func(string) string) (*Config, error) {
 		MaxClockOffset:    l.duration("MAX_CLOCK_OFFSET", 60*time.Second),
 		OutcomeLag:        l.duration("OUTCOME_LAG", 32*time.Minute),
 		LossRatioWindow:   l.duration("LOSS_RATIO_WINDOW", time.Hour),
+		StatsRetention:    l.duration("STATS_RETENTION", 24*time.Hour),
 
 		MaxSessions:         l.integer("MAX_SESSIONS", 200),
 		MaxSessionsPerToken: l.integer("MAX_SESSIONS_PER_TOKEN", 20),
@@ -213,6 +215,9 @@ func (c *Config) validate() error {
 		if d < time.Second {
 			return fmt.Errorf("LOSSMON_%s must be at least 1s", name)
 		}
+	}
+	if c.StatsRetention < 10*time.Minute || c.StatsRetention > 31*24*time.Hour {
+		return errors.New("LOSSMON_STATS_RETENTION must be within 10m..744h")
 	}
 	for name, v := range map[string]float64{
 		"MAX_RATE_PER_CLIENT": c.MaxRatePerClient, "MAX_RATE_TOTAL": c.MaxRateTotal,

@@ -47,6 +47,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/config", s.authed(auth.ScopeReport, s.handleConfig))
 	mux.HandleFunc("PUT /v1/sessions/{id}", s.authed(auth.ScopeReport, s.handleRegister))
 	mux.HandleFunc("POST /v1/sessions/{id}/records", s.authed(auth.ScopeReport, s.handleRecords))
+	mux.HandleFunc("GET /v1/stats", s.authed(auth.ScopeQuery, s.handleStats))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { s.fail(w, notFound(r)) })
 	return s.recoverer(mux)
 }

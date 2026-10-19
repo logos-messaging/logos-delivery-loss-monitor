@@ -12,6 +12,7 @@ import (
 	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/config"
 	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/metrics"
 	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/ratelimit"
+	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/stats"
 )
 
 var (
@@ -29,6 +30,7 @@ const registerRetryAfterMs = 60_000
 type Core struct {
 	cfg        *config.Config
 	m          *metrics.Metrics
+	stats      *stats.Store
 	log        *slog.Logger
 	probeKeyID string
 	startMs    int64
@@ -61,7 +63,8 @@ func NewCore(cfg *config.Config, m *metrics.Metrics, log *slog.Logger, probeKeyI
 	}
 	c := &Core{
 		cfg: cfg, m: m, log: log, probeKeyID: probeKeyID, startMs: startMs,
-		w: cfg.WindowMs(), g: cfg.GraceMs(), hold: cfg.HoldMs(),
+		stats: stats.New(cfg.StatsRetention, stats.DefaultMaxClientKeys, startMs),
+		w:     cfg.WindowMs(), g: cfg.GraceMs(), hold: cfg.HoldMs(),
 		warmup: cfg.ReceiverWarmup.Milliseconds(), maxOff: cfg.MaxClockOffsetMs(),
 		sessions: map[string]*session{}, retired: map[uint64]*session{},
 		clientRefs: map[string]int{}, clientToken: map[string]string{}, recLimit: map[string]*ratelimit.Bucket{},
@@ -70,6 +73,11 @@ func NewCore(cfg *config.Config, m *metrics.Metrics, log *slog.Logger, probeKeyI
 	}
 	c.pad = c.g
 	return c
+}
+
+// Stats answers a stats query from the aggregates.
+func (c *Core) Stats(now int64, q stats.Query) stats.Result {
+	return c.stats.Query(now, q)
 }
 
 func (c *Core) addGap(s *session, from, to int64, reason string, bc *batchCtx) {
