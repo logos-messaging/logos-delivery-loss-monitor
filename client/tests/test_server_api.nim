@@ -80,6 +80,12 @@ suite "server api":
     check reply.retryAfterMs == Opt.some(2000'i64)
     check reply.retryAfterBodyMs() == Opt.some(1500'i64)
 
+  test "an enormous or negative retry-after header is clamped":
+    for value in ["9223372036854775807", "-5"]:
+      next = Reply(status: Http429, body: "{}", headers: @[("Retry-After", value)])
+      let reply = waitFor(api.call(MethodGet, "/v1/config")).get()
+      check reply.retryAfterMs.get() in 0'i64 .. 86_400_000'i64
+
   test "an unparsable error body gives no code":
     next = Reply(status: Http500, body: "<html>")
     let reply = waitFor(api.call(MethodGet, "/v1/config")).get()

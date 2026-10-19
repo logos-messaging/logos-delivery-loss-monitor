@@ -107,7 +107,7 @@ proc run(c: LossmonConf) {.async: (raises: [CancelledError]).} =
     ),
     sessionId,
   )
-  (await session.establish(refetchConfig = true, giveUpOnAuth = true)).isOkOr:
+  (await session.establish(refetchConfig = true, startup = true)).isOkOr:
     if isRequested():
       quit(exitCode())
     fail(error)
@@ -193,6 +193,7 @@ proc run(c: LossmonConf) {.async: (raises: [CancelledError]).} =
       await sleepAsync(ShutdownPoll)
   if exitCode() == 0:
     state.enqueue(Record(kind: RecordKind.End, atMs: nowMs()))
+  state.close()
   rep.stop()
   await repLoop
   await api.close()

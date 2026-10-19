@@ -252,7 +252,7 @@ func (c *Core) evalPair(p *publish, r *session, now int64) outcome {
 	case r.ended && r.endedAt < end:
 		out.reason = metrics.ReasonReceiverEnded
 	default:
-		if reason := r.gapReason(p.tP, end); reason != "" {
+		if reason := c.blindReason(p, r, end); reason != "" {
 			out.reason = reason
 		} else if g != nil && g.overflow {
 			out.reason = metrics.ReasonReplayed
@@ -271,6 +271,16 @@ func (c *Core) evalPair(p *publish, r *session, now int64) outcome {
 	}
 	out.kind = kindLost
 	return out
+}
+
+// blindReason is the strongest reason the receiver may have missed p's receipts: a gap overlapping the
+// window, or a receipt for this probe that the server dropped.
+func (c *Core) blindReason(p *publish, r *session, end int64) string {
+	reason := r.gapReason(p.tP, end)
+	if b := c.blind.reason(p.probeID, r.uid); gapRank(b) > gapRank(reason) {
+		return b
+	}
+	return reason
 }
 
 // evaluate decides every pair of p that can be decided now, deferring the rest.
@@ -365,7 +375,7 @@ func (c *Core) evictPending() {
 }
 
 // evictOrphan drops the oldest orphan group and opens an evicted gap on its receiver.
-func (c *Core) evictOrphan() {
+func (c *Core) evictOrphan(now int64) {
 	front := c.orphanList.Front()
 	if front == nil {
 		return
@@ -378,6 +388,7 @@ func (c *Core) evictOrphan() {
 		}
 	}
 	c.removeOrphan(g)
+	c.blindProbe(g.r, g.e.probeID, metrics.ReasonEvicted, hi, now)
 	c.addGap(g.r, lo, hi, metrics.ReasonEvicted, nil)
 	c.m.Skipped(metrics.SkipEvicted, 1)
 }
@@ -392,7 +403,7 @@ func (c *Core) removeOrphan(g *recvGroup) {
 	}
 }
 
-func (c *Core) enforceCaps() {
+func (c *Core) enforceCaps(now int64) {
 	for c.pendFIFO.Len() > c.cfg.MaxPendingPublishes {
 		c.evictPending()
 	}
@@ -400,6 +411,6 @@ func (c *Core) enforceCaps() {
 		c.dropPublish(c.tombFIFO.Front().Value.(*publish))
 	}
 	for c.orphanCount > c.cfg.MaxOrphans {
-		c.evictOrphan()
+		c.evictOrphan(now)
 	}
 }

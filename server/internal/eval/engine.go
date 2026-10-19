@@ -92,6 +92,7 @@ func (e *Engine) Do(ctx context.Context, f func(c *Core, now int64)) *apierr.Err
 
 // Register submits a registration.
 func (e *Engine) Register(ctx context.Context, token, id string, req *RegisterRequest) (res RegisterResult, apiErr *apierr.Error) {
+	req.ArrivedMs = e.clock.NowMs()
 	if err := e.Do(ctx, func(c *Core, now int64) { res, apiErr = c.Register(now, token, id, req) }); err != nil {
 		return RegisterResult{}, err
 	}
@@ -100,6 +101,7 @@ func (e *Engine) Register(ctx context.Context, token, id string, req *RegisterRe
 
 // Ingest submits a records batch.
 func (e *Engine) Ingest(ctx context.Context, token, id string, b *Batch) (res IngestResult, apiErr *apierr.Error) {
+	b.ArrivedMs = e.clock.NowMs()
 	if err := e.Do(ctx, func(c *Core, now int64) { res, apiErr = c.Ingest(now, token, id, b) }); err != nil {
 		return IngestResult{}, err
 	}

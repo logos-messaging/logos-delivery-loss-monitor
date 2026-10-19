@@ -88,7 +88,7 @@ proc uploadOnce(r: Reporter): Future[Duration] {.async: (raises: [CancelledError
     ZeroDuration
   of BatchReaction.Reregister:
     notice "the server does not know this session; registering again"
-    let res = await s.establish(refetchConfig = true, giveUpOnAuth = false)
+    let res = await s.establish(refetchConfig = true, startup = false)
     if res.isErr() and not isRequested():
       error "re-registration failed", reason = res.error
       requestExit(ExitConfig)

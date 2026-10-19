@@ -16,6 +16,8 @@ const
   ReceiptMaxAgeMin* = 60_000'i64
   ReceiptMaxAgeMax* = 24 * 3_600_000'i64
   ReceiptMaxAgeDefault* = 600_000'i64 ## for servers that do not publish the bound
+  ClockOffsetMax* = 600_000'i64
+  ClockOffsetDefault* = 60_000'i64 ## for servers that do not publish the bound
 
 type ServerConfig* = object
   probeKey*: ProbeKey
@@ -30,6 +32,7 @@ type ServerConfig* = object
   heartbeatIntervalMs*: int64
   maxBatchRecords*: int
   receiptMaxAgeMs*: int64
+  maxClockOffsetMs*: int64
 
 func field(node: JsonNode, key: string, kind: JsonNodeKind): Result[JsonNode, string] =
   ## `std/json` getters return a default on a type mismatch, so check the kind first.
@@ -77,6 +80,9 @@ proc parseServerConfig*(body: string): Result[ServerConfig, string] =
   cfg.receiptMaxAgeMs = ReceiptMaxAgeDefault
   if node.hasKey("receipt_max_age_ms"):
     cfg.receiptMaxAgeMs = ?node.intField("receipt_max_age_ms")
+  cfg.maxClockOffsetMs = ClockOffsetDefault
+  if node.hasKey("max_clock_offset_ms"):
+    cfg.maxClockOffsetMs = ?node.intField("max_clock_offset_ms")
   if cfg.topics.len == 0:
     return err("the server config lists no topics")
   cfg.heartbeatIntervalMs =
@@ -85,4 +91,10 @@ proc parseServerConfig*(body: string): Result[ServerConfig, string] =
   cfg.maxPayloadBytes = min(max(cfg.maxPayloadBytes, PayloadMin), PayloadMax)
   cfg.receiptMaxAgeMs =
     min(max(cfg.receiptMaxAgeMs, ReceiptMaxAgeMin), ReceiptMaxAgeMax)
+  cfg.maxClockOffsetMs = min(max(cfg.maxClockOffsetMs, 0), ClockOffsetMax)
   ok(cfg)
+
+func receiptFilterMs*(cfg: ServerConfig): int64 =
+  ## The oldest receipt, by message timestamp, worth reporting. The server measures age on
+  ## the corrected clock, so the bound leaves room for this client's clock offset.
+  max(cfg.receiptMaxAgeMs - cfg.maxClockOffsetMs, cfg.receiptMaxAgeMs div 2)

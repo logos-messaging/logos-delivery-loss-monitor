@@ -72,6 +72,28 @@ suite "server config":
     j.delete("receipt_max_age_ms")
     check parseServerConfig($j).get().receiptMaxAgeMs == ReceiptMaxAgeDefault
 
+  test "the clock offset bound is read, defaulted and clamped":
+    check parseServerConfig(body()).get().maxClockOffsetMs == ClockOffsetDefault
+    check parseServerConfig(body(%*{"max_clock_offset_ms": 5_000}))
+      .get().maxClockOffsetMs == 5_000
+    check parseServerConfig(body(%*{"max_clock_offset_ms": -1})).get().maxClockOffsetMs ==
+      0
+    check parseServerConfig(body(%*{"max_clock_offset_ms": 9_999_999_999}))
+      .get().maxClockOffsetMs == ClockOffsetMax
+    check parseServerConfig(body(%*{"max_clock_offset_ms": "soon"})).isErr()
+
+  test "the receipt filter leaves room for the clock offset":
+    let cfg = parseServerConfig(
+        body(%*{"receipt_max_age_ms": 1_230_000, "max_clock_offset_ms": 60_000})
+      )
+      .get()
+    check cfg.receiptFilterMs() == 1_170_000
+    let tight = parseServerConfig(
+        body(%*{"receipt_max_age_ms": 60_000, "max_clock_offset_ms": 60_000})
+      )
+      .get()
+    check tight.receiptFilterMs() == 30_000
+
   test "a bad probe key is refused":
     check parseServerConfig(body(%*{"probe_key": "0x1234"})).isErr()
     check parseServerConfig(body(%*{"probe_key": "nothex"})).isErr()

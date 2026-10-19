@@ -5,7 +5,7 @@
 import std/sets
 import chronicles, results
 import logos_delivery
-import ./[clock, keys, probe, receipts, records, session, state]
+import ./[clock, keys, probe, receipts, records, server_config, session, state]
 
 logScope:
   topics = "lossmon receiver"
@@ -33,7 +33,7 @@ proc handle(r: Receiver, e: MessageReceivedEvent) =
     return
   let at = nowMs()
   let msgTsMs = e.message.timestamp div 1_000_000
-  if at - msgTsMs > r.session.cfg.receiptMaxAgeMs:
+  if at - msgTsMs > r.session.cfg.receiptFilterMs():
     return
   let decoded = inspectProbe(e.message.payload, r.session.keys.verifying(at))
   case decoded.kind

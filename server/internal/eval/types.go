@@ -21,6 +21,9 @@ type RegisterRequest struct {
 	ProbeKeyID           string   `json:"probe_key_id"`
 	NTPSynced            bool     `json:"ntp_synced"`
 	ClientTimeMs         int64    `json:"client_time_ms"`
+
+	// ArrivedMs is when the request reached the server. Zero means the processing time.
+	ArrivedMs int64 `json:"-"`
 }
 
 // RegisterResult is the body returned by a successful registration.
@@ -61,6 +64,16 @@ type Record struct {
 type Batch struct {
 	SentAtMs int64    `json:"sent_at_ms"`
 	Records  []Record `json:"records"`
+
+	// ArrivedMs is when the request reached the server. Zero means the processing time.
+	ArrivedMs int64 `json:"-"`
+}
+
+func arrivedAt(now, arrived int64) int64 {
+	if arrived == 0 {
+		return now
+	}
+	return arrived
 }
 
 // IngestResult is the body returned for an applied batch.
