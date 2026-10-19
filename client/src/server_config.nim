@@ -13,6 +13,9 @@ const
   BatchMax* = 2000
   PayloadMin* = 64
   PayloadMax* = 65_536
+  ReceiptMaxAgeMin* = 60_000'i64
+  ReceiptMaxAgeMax* = 24 * 3_600_000'i64
+  ReceiptMaxAgeDefault* = 600_000'i64 ## for servers that do not publish the bound
 
 type ServerConfig* = object
   probeKey*: ProbeKey
@@ -26,6 +29,7 @@ type ServerConfig* = object
   maxPayloadBytes*: int
   heartbeatIntervalMs*: int64
   maxBatchRecords*: int
+  receiptMaxAgeMs*: int64
 
 func field(node: JsonNode, key: string, kind: JsonNodeKind): Result[JsonNode, string] =
   ## `std/json` getters return a default on a type mismatch, so check the kind first.
@@ -70,10 +74,15 @@ proc parseServerConfig*(body: string): Result[ServerConfig, string] =
   cfg.maxPayloadBytes = int(?node.intField("max_payload_bytes"))
   cfg.heartbeatIntervalMs = ?node.intField("heartbeat_interval_ms")
   cfg.maxBatchRecords = int(?node.intField("max_batch_records"))
+  cfg.receiptMaxAgeMs = ReceiptMaxAgeDefault
+  if node.hasKey("receipt_max_age_ms"):
+    cfg.receiptMaxAgeMs = ?node.intField("receipt_max_age_ms")
   if cfg.topics.len == 0:
     return err("the server config lists no topics")
   cfg.heartbeatIntervalMs =
     min(max(cfg.heartbeatIntervalMs, HeartbeatMinMs), HeartbeatMaxMs)
   cfg.maxBatchRecords = min(max(cfg.maxBatchRecords, BatchMin), BatchMax)
   cfg.maxPayloadBytes = min(max(cfg.maxPayloadBytes, PayloadMin), PayloadMax)
+  cfg.receiptMaxAgeMs =
+    min(max(cfg.receiptMaxAgeMs, ReceiptMaxAgeMin), ReceiptMaxAgeMax)
   ok(cfg)

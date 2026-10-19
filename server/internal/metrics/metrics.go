@@ -34,6 +34,7 @@ const (
 	SkipBeforeRegistration = "before_registration"
 	SkipPublishReportLate  = "publish_report_late"
 	SkipEvicted            = "evicted"
+	SkipAlreadyDecided     = "already_decided"
 )
 
 var (
@@ -41,7 +42,7 @@ var (
 	anonymities   = []string{"none", "preferred", "required"}
 	sources       = []string{"live", "history"}
 	reasons       = []string{ReasonClockSkew, ReasonReceiverEnded, ReasonReceiverGap, ReasonReceiverLagging, ReasonEvicted, ReasonRejected, ReasonReplayed}
-	skipReasons   = []string{SkipBeforeStart, SkipBeforeRegistration, SkipPublishReportLate, SkipEvicted}
+	skipReasons   = []string{SkipBeforeStart, SkipBeforeRegistration, SkipPublishReportLate, SkipEvicted, SkipAlreadyDecided}
 	sendOutcomes  = []string{"error", "timeout"}
 	recordTypes   = []string{"heartbeat", "publish", "receive", "end"}
 	recordResults = []string{"ok", "duplicate_seq", "invalid", "over_budget"}

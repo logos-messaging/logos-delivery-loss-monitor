@@ -17,6 +17,7 @@ func body(overrides: JsonNode = newJObject()): string =
     "max_payload_bytes": 4096,
     "heartbeat_interval_ms": 10000,
     "max_batch_records": 2000,
+    "receipt_max_age_ms": 1_230_000,
     "server_time_ms": 1760870000123,
   }
   for k, v in overrides:
@@ -31,24 +32,32 @@ suite "server config":
     check cfg.topics == @["/lossmon/1/probe-0/raw"]
     check cfg.heartbeatIntervalMs == 10_000
     check cfg.maxBatchRecords == 2000
+    check cfg.receiptMaxAgeMs == 1_230_000
     check cfg.probeKeyId == "e543f63c"
 
   test "values are clamped to the client limits":
     let low = parseServerConfig(
         body(
-          %*{"heartbeat_interval_ms": 5, "max_batch_records": 0, "max_payload_bytes": 1}
+          %*{
+            "heartbeat_interval_ms": 5,
+            "max_batch_records": 0,
+            "max_payload_bytes": 1,
+            "receipt_max_age_ms": 0,
+          }
         )
       )
       .get()
     check low.heartbeatIntervalMs == 1000
     check low.maxBatchRecords == 1
     check low.maxPayloadBytes == 64
+    check low.receiptMaxAgeMs == ReceiptMaxAgeMin
     let high = parseServerConfig(
         body(
           %*{
             "heartbeat_interval_ms": 9_999_999,
             "max_batch_records": 99_999,
             "max_payload_bytes": 99_999_999,
+            "receipt_max_age_ms": 9_999_999_999_999,
           }
         )
       )
@@ -56,6 +65,12 @@ suite "server config":
     check high.heartbeatIntervalMs == 60_000
     check high.maxBatchRecords == 2000
     check high.maxPayloadBytes == 65_536
+    check high.receiptMaxAgeMs == ReceiptMaxAgeMax
+
+  test "a server without receipt_max_age_ms gets the default bound":
+    var j = parseJson(body())
+    j.delete("receipt_max_age_ms")
+    check parseServerConfig($j).get().receiptMaxAgeMs == ReceiptMaxAgeDefault
 
   test "a bad probe key is refused":
     check parseServerConfig(body(%*{"probe_key": "0x1234"})).isErr()
@@ -66,6 +81,7 @@ suite "server config":
     check parseServerConfig("not json").isErr()
     check parseServerConfig("[]").isErr()
     check parseServerConfig(body(%*{"cluster_id": "two"})).isErr()
+    check parseServerConfig(body(%*{"receipt_max_age_ms": "soon"})).isErr()
 
   test "an empty topic list is refused":
     check parseServerConfig(body(%*{"topics": []})).isErr()

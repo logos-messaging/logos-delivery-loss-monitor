@@ -170,6 +170,7 @@ type configResponse struct {
 	MaxPayloadBytes   int      `json:"max_payload_bytes"`
 	HeartbeatInterval int64    `json:"heartbeat_interval_ms"`
 	MaxBatchRecords   int      `json:"max_batch_records"`
+	ReceiptMaxAgeMs   int64    `json:"receipt_max_age_ms"`
 	ServerTimeMs      int64    `json:"server_time_ms"`
 }
 
@@ -179,7 +180,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, _ *http.Request, _ auth.Ide
 		Topics: s.cfg.Topics, Locations: s.cfg.Locations, Ephemeral: s.cfg.Ephemeral,
 		MaxRatePerClient: s.cfg.MaxRatePerClient, MaxPayloadBytes: s.cfg.MaxPayloadBytes,
 		HeartbeatInterval: s.cfg.HeartbeatInterval.Milliseconds(), MaxBatchRecords: s.cfg.MaxBatchRecords,
-		ServerTimeMs: s.now(),
+		ReceiptMaxAgeMs: s.cfg.ReceiptMaxAgeMs(), ServerTimeMs: s.now(),
 	})
 }
 

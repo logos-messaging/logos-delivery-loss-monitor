@@ -12,14 +12,14 @@ const
   OutcomeGraceMs* = 60_000'i64
 
 type
-  SendEventKind* {.pure.} = enum
+  PendingEventKind* {.pure.} = enum
     Queued
     Propagated
     Sent
     Failed
 
   SendEvent* = object
-    kind*: SendEventKind
+    kind*: PendingEventKind
     hash*: string
     error*: string
     atMs*: int64
@@ -65,13 +65,13 @@ func isFull*(p: PendingSends): bool =
 func outcomeOf(p: PendingSend, ev: SendEvent): Opt[Outcome] =
   let name =
     case ev.kind
-    of SendEventKind.Propagated:
+    of PendingEventKind.Propagated:
       "propagated"
-    of SendEventKind.Sent:
+    of PendingEventKind.Sent:
       "sent"
-    of SendEventKind.Failed:
+    of PendingEventKind.Failed:
       "error"
-    of SendEventKind.Queued:
+    of PendingEventKind.Queued:
       return Opt.none(Outcome)
   Opt.some(
     Outcome(
@@ -91,7 +91,7 @@ func apply(p: var PendingSends, id: string, ev: SendEvent): Opt[Outcome] =
   var entry = p.pending.getOrDefault(id)
   if ev.hash.len > 0:
     entry.hash = ev.hash
-  if ev.kind == SendEventKind.Queued:
+  if ev.kind == PendingEventKind.Queued:
     entry.queued = true
     p.pending[id] = entry
     return Opt.none(Outcome)

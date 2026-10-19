@@ -22,7 +22,7 @@ lossmon-client: deps
 deps: $(DEPS_STAMP) $(RLN_FILE)
 
 $(DEPS_STAMP):
-	test -f $(VENDOR)/logos_delivery.nimble || git submodule update --init $(VENDOR)
+	test -f $(VENDOR)/logos_delivery.nimble || git submodule update --init --recursive $(VENDOR)
 	$(MAKE) -C $(VENDOR) build-deps
 
 $(RLN_FILE): | $(DEPS_STAMP)

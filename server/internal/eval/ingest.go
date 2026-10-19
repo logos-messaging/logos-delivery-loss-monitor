@@ -153,7 +153,7 @@ func (c *Core) validRecord(s *session, r *Record, corr int64, reachable bool) bo
 			return false
 		}
 		return r.MsgTsMs >= 0 && r.MsgTsMs < maxTimeMs &&
-			r.MsgTsMs >= corr-(c.w+c.g+c.hold) && r.MsgTsMs <= corr+c.maxOff
+			r.MsgTsMs >= corr-c.cfg.ReceiptMaxAgeMs() && r.MsgTsMs <= corr+c.maxOff
 	case typeEnd:
 		return true
 	}

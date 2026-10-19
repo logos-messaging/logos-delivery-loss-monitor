@@ -8,7 +8,6 @@ import std/[deques, tables]
 const
   MaxReceiptsPerProbe* = 4
   DefaultCapacity* = 50_000
-  DefaultTtlMs* = 11 * 60 * 1000'i64 ## default window plus grace
 
 type
   ReceiptVerdict* {.pure.} = enum
@@ -29,7 +28,7 @@ type
     capacity: int
     ttlMs: int64
 
-func init*(T: type ReceiptTable, capacity = DefaultCapacity, ttlMs = DefaultTtlMs): T =
+func init*(T: type ReceiptTable, ttlMs: int64, capacity = DefaultCapacity): T =
   ReceiptTable(
     entries: initTable[string, ProbeEntry](),
     order: initDeque[(string, int64)](),

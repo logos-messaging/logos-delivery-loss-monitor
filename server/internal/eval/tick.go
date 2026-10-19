@@ -32,6 +32,7 @@ func (c *Core) expireTombstones(now int64) {
 			return
 		}
 		c.dropPublish(p)
+		c.closed.add(p.probeID, now)
 	}
 }
 
@@ -51,27 +52,11 @@ func (c *Core) expireOrphans(now int64) {
 		} else {
 			c.m.Unmatched(g.topic, n)
 		}
-		c.markExpired(g.e.probeID, now)
+		c.expired.add(g.e.probeID, now)
 		c.removeOrphan(g)
 	}
-	for len(c.expiredFIFO) > 0 {
-		x := c.expiredFIFO[0]
-		if x.at+ttl > now && len(c.expiredFIFO) <= c.cfg.MaxOrphans {
-			break
-		}
-		c.expiredFIFO = c.expiredFIFO[1:]
-		if c.expiredProbes[x.probeID] == x.at {
-			delete(c.expiredProbes, x.probeID)
-		}
-	}
-}
-
-func (c *Core) markExpired(probeID string, now int64) {
-	if _, ok := c.expiredProbes[probeID]; ok {
-		return
-	}
-	c.expiredProbes[probeID] = now
-	c.expiredFIFO = append(c.expiredFIFO, expiredProbe{probeID: probeID, at: now})
+	c.expired.prune(now, ttl, c.cfg.MaxOrphans)
+	c.closed.prune(now, ttl, c.cfg.MaxOrphans)
 }
 
 func (c *Core) expireSessions(now int64) {

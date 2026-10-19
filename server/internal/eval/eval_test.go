@@ -259,6 +259,50 @@ func TestReceiptBeforePublish(t *testing.T) {
 	h.expect("lossmon_unmatched_total", 0)
 }
 
+func TestMatchedReceiptsLeaveTheOrphanIndex(t *testing.T) {
+	w := newWorld(t)
+	h := w.h
+	for i := 0; i < 20; i++ {
+		h.advance(time.Second)
+		h.send(w.a, h.rcv(i, "live"))
+		h.send(w.b, h.rcv(i, "live"))
+	}
+	h.advance(time.Second)
+	h.expect("lossmon_pending_orphans", 40)
+	for i := 0; i < 20; i++ {
+		h.send(w.p, h.pub(i))
+	}
+	h.advance(time.Second)
+	h.expect("lossmon_pending_orphans", 0)
+	h.settle(w.p, w.a, w.b)
+	h.expect("lossmon_delivered_total", 40)
+	h.expect("lossmon_unmatched_total", 0)
+}
+
+func TestRedeliveredReceiptAfterDecisionIsNotAnOrphan(t *testing.T) {
+	w := newWorld(t)
+	h := w.h
+	h.advance(time.Second)
+	h.send(w.p, h.pub(0))
+	h.send(w.a, h.rcv(0, "live"))
+	h.send(w.b, h.rcv(0, "live"))
+	h.settle(w.p, w.a, w.b)
+	h.beats(h.cfg.Window+time.Minute, w.p, w.a, w.b)
+	if h.c.tombFIFO.Len() != 0 {
+		t.Fatalf("tombstone still held")
+	}
+	h.send(w.a, h.rcv(0, "live"))
+	h.send(w.b, h.rcv(0, "history"))
+	h.advance(time.Second)
+	h.expect("lossmon_pending_orphans", 0)
+	h.expect("lossmon_skipped_total", 2, "reason", "already_decided")
+	h.beats(h.cfg.Window+h.cfg.Grace+h.cfg.Hold+time.Minute, w.p, w.a, w.b)
+	h.expect("lossmon_unmatched_total", 0)
+	h.expect("lossmon_delivered_total", 2)
+	h.expect("lossmon_lost_total", 0)
+	h.expect("lossmon_duplicate_total", 0)
+}
+
 func TestOrphanExpiresAsUnmatchedAndLatePublishIsSkipped(t *testing.T) {
 	w := newWorld(t)
 	h := w.h

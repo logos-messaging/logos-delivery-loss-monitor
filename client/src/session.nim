@@ -94,7 +94,7 @@ proc fetchConfig(s: Session, attempt: int): Future[StepResult] {.async: (raises:
       )
     s.cfg = cfg
     s.hasConfig = true
-    s.keys.rotate(cfg.probeKey, nowMs())
+    s.keys.rotate(cfg.probeKey, nowMs(), cfg.receiptMaxAgeMs)
     StepResult(step: Step.Done)
   of 401, 403:
     StepResult(
