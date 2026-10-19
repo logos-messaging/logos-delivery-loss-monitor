@@ -1,0 +1,59 @@
+name: deploy
+
+on:
+  pull_request:
+    paths:
+      - "deploy/**"
+      - "server/Dockerfile"
+      - "server/internal/metrics/**"
+      - ".github/workflows/deploy.yml"
+  push:
+    branches: [main]
+    paths:
+      - "deploy/**"
+      - "server/Dockerfile"
+      - "server/internal/metrics/**"
+      - ".github/workflows/deploy.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy
+    env:
+      GRAFANA_ADMIN_PASSWORD: ci-only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Compose config
+        run: docker compose --profile listener --profile public config -q
+      - name: Required Grafana password
+        run: |
+          if env -u GRAFANA_ADMIN_PASSWORD docker compose config -q 2>/dev/null; then
+            echo "compose accepted an empty GRAFANA_ADMIN_PASSWORD"; exit 1
+          fi
+      - name: Images are pinned by digest
+        run: |
+          docker compose --profile listener --profile public config --images | grep -v '^lossmon-' | grep -v '@sha256:[0-9a-f]\{64\}$' && exit 1 || true
+          grep -h '^FROM ' ../server/Dockerfile ../client/Dockerfile | grep -v -E '^FROM (build|binary) ' | grep -v '@sha256:[0-9a-f]\{64\}' && exit 1 || true
+      - name: Dashboard JSON
+        run: |
+          jq -e '.uid and (.panels | length > 0)' grafana/dashboards/lossmon.json > /dev/null
+          for m in $(grep -o 'lossmon_[a-z_]*' grafana/dashboards/lossmon.json | sed 's/_bucket$//' | sort -u); do
+            grep -q "\"${m#lossmon_}\"" ../server/internal/metrics/metrics.go || grep -q "namespace+\"_${m#lossmon_}\"" ../server/internal/metrics/metrics.go || { echo "unknown metric $m"; exit 1; }
+          done
+      - name: Prometheus config
+        run: |
+          image=$(docker compose config --format json | jq -r .services.prometheus.image)
+          docker run --rm --entrypoint promtool -v "$PWD/prometheus/prometheus.yml:/prometheus.yml:ro" "$image" check config /prometheus.yml
+      - name: Caddyfile
+        run: |
+          image=$(docker compose --profile public config --format json | jq -r .services.caddy.image)
+          docker run --rm -e LOSSMON_PUBLIC_HOST=lossmon.example.org -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" "$image" caddy validate --config /etc/caddy/Caddyfile
+      - name: Server image
+        run: docker build ../server

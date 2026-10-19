@@ -1,0 +1,8 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  - job_name: lossmon-server
+    static_configs:
+      - targets: ["server:9102"]

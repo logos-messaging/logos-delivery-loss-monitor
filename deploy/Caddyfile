@@ -1,0 +1,12 @@
+{
+	admin off
+}
+
+{$LOSSMON_PUBLIC_HOST} {
+	handle /v1/* {
+		reverse_proxy server:8080
+	}
+	handle {
+		respond 404
+	}
+}
