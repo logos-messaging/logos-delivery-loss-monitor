@@ -107,6 +107,39 @@ func TestOutcomeLag_HealthyReceiverStillLoses(t *testing.T) {
 	h.expect("lossmon_delivered_total", 1)
 }
 
+// A publisher outcome can trail its receipts by up to the client's parked-send age; the blind set must outlast it.
+func TestOutcomeLag_BlindSetOutlastsParkedPublish(t *testing.T) {
+	short := func(c *config.Config) { c.Window, c.Hold = 2*time.Minute, 2*time.Minute }
+	t.Run("rejected", func(t *testing.T) {
+		w := newWorld(t, short)
+		h := w.h
+		h.advance(time.Second)
+		bad := h.rcv(0, "live")
+		bad.MsgTsMs = h.now - 5*minuteMs
+		h.send(w.a, bad)
+		h.beats(25*time.Minute, w.p, w.a, w.b)
+		h.send(w.p, h.pub(0))
+		h.settle(w.p, w.a, w.b)
+		h.expect("lossmon_lost_total", 1)
+		h.expect("lossmon_indeterminate_total", 1, "reason", "rejected")
+	})
+	t.Run("evicted", func(t *testing.T) {
+		w := newWorld(t, short, func(c *config.Config) { c.MaxOrphans = 20 })
+		h := w.h
+		h.advance(time.Second)
+		h.send(w.a, h.rcv(0, "live"))
+		h.send(w.b, h.rcv(0, "live"))
+		for i := 1; i <= 25; i++ {
+			h.send(w.a, h.rcv(1000+i, "live"))
+		}
+		h.beats(25*time.Minute, w.p, w.a, w.b)
+		h.send(w.p, h.pub(0))
+		h.settle(w.p, w.a, w.b)
+		h.expect("lossmon_lost_total", 0)
+		h.expect("lossmon_indeterminate_total", 2, "reason", "evicted")
+	})
+}
+
 func TestBlindSet_BoundedAndExpires(t *testing.T) {
 	b := newBlindSet()
 	s := &session{uid: 1}

@@ -39,6 +39,7 @@ type Config struct {
 	Hold               time.Duration
 	ReceiverWarmup     time.Duration
 	MaxClockOffset     time.Duration
+	OutcomeLag         time.Duration
 	LossRatioWindow    time.Duration
 	SessionIdleTimeout time.Duration
 
@@ -93,6 +94,9 @@ func (c *Config) ReceiptMaxAgeMs() int64 { return (c.Window + c.Grace + c.Hold).
 // MaxClockOffsetMs returns the clock offset bound in milliseconds.
 func (c *Config) MaxClockOffsetMs() int64 { return c.MaxClockOffset.Milliseconds() }
 
+// OutcomeLagMs returns the longest a publisher's outcome event may trail the receipts it explains.
+func (c *Config) OutcomeLagMs() int64 { return c.OutcomeLag.Milliseconds() }
+
 // Load reads the configuration through getenv and validates it.
 func Load(getenv func(string) string) (*Config, error) {
 	l := loader{get: getenv}
@@ -118,6 +122,7 @@ func Load(getenv func(string) string) (*Config, error) {
 		Hold:              l.duration("HOLD", 10*time.Minute),
 		ReceiverWarmup:    l.duration("RECEIVER_WARMUP", 30*time.Second),
 		MaxClockOffset:    l.duration("MAX_CLOCK_OFFSET", 60*time.Second),
+		OutcomeLag:        l.duration("OUTCOME_LAG", 32*time.Minute),
 		LossRatioWindow:   l.duration("LOSS_RATIO_WINDOW", time.Hour),
 
 		MaxSessions:         l.integer("MAX_SESSIONS", 200),
@@ -202,7 +207,7 @@ func (c *Config) validate() error {
 	}
 	for name, d := range map[string]time.Duration{
 		"WINDOW": c.Window, "GRACE": c.Grace, "HOLD": c.Hold, "RECEIVER_WARMUP": c.ReceiverWarmup,
-		"MAX_CLOCK_OFFSET": c.MaxClockOffset, "LOSS_RATIO_WINDOW": c.LossRatioWindow,
+		"MAX_CLOCK_OFFSET": c.MaxClockOffset, "OUTCOME_LAG": c.OutcomeLag, "LOSS_RATIO_WINDOW": c.LossRatioWindow,
 		"SESSION_IDLE_TIMEOUT": c.SessionIdleTimeout,
 	} {
 		if d < time.Second {
