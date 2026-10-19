@@ -4,18 +4,17 @@ Publishes probe messages on a Logos Delivery network and reports what it publish
 
 ## Build
 
-The Logos Delivery tree is the submodule `vendor/logos-delivery`, pinned to `v0.39.2`.
+Logos Delivery `v0.39.2` is a Nimble dependency (`lossmon_client.nimble`), locked in `nimble.lock` to the dependency set that release was tested with. There are no submodules.
 
 ```
-git submodule update --init --recursive client/vendor/logos-delivery
 make -C client lossmon-client     # build/lossmon-client
 make -C client test               # unit tests
-docker build --platform linux/amd64 --target prod --build-arg LD_VERSION=v0.39.2 client
+docker build --platform linux/amd64 --target prod client
 ```
 
-`--recursive` is required: `librln` is built from the nested `zerokit` submodule. The image builds for `linux/amd64` only; pass `--platform linux/amd64` on arm64 hosts.
+`make` installs Nimble `0.26.0` (checksum-verified) under `~/.local`, fetches the dependencies into `nimbledeps/`, builds their C libraries, then builds `librln` from a pinned zerokit commit with `cargo` (a Rust toolchain is required). Set `LOG_LEVEL=INFO` to build with the node's info logging. On hosts where Nimble's prebuilt Nim does not match the CPU (arm64 Linux), point `LOSSMON_NIM` at a native Nim `2.2.6`. The image builds for `linux/amd64` only; pass `--platform linux/amd64` on arm64 hosts.
 
-`make` builds the pinned Nim toolchain and dependencies on first use, then `librln` from the vendored zerokit (or downloads the prebuilt archive on glibc hosts). Set `LOG_LEVEL=INFO` to build with the node's info logging.
+To bump Logos Delivery, change the commit in `lossmon_client.nimble`, copy the revisions of the packages in that release's `nimble.lock` into the pins, run `nimble lock` and compare the result with the release's lock.
 
 ## Run
 
