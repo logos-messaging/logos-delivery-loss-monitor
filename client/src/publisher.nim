@@ -64,7 +64,7 @@ proc emit(p: Publisher, o: Outcome) =
   )
 
 proc onSendEvent(
-    p: Publisher, requestId: RequestId, kind: SendEventKind, hash, error: string
+    p: Publisher, requestId: RequestId, kind: PendingEventKind, hash, error: string
 ) =
   let settled = p.pending.onEvent(
     $requestId, SendEvent(kind: kind, hash: hash, error: error, atMs: nowMs())
@@ -78,25 +78,25 @@ proc listen*(p: Publisher): Result[void, string] =
   discard MessageQueuedEvent.listen(
     ctx,
     proc(e: MessageQueuedEvent) {.async: (raises: []).} =
-      p.onSendEvent(e.requestId, SendEventKind.Queued, e.messageHash, ""),
+      p.onSendEvent(e.requestId, PendingEventKind.Queued, e.messageHash, ""),
   ).valueOr:
     return err("cannot listen for MessageQueuedEvent: " & error)
   discard MessagePropagatedEvent.listen(
     ctx,
     proc(e: MessagePropagatedEvent) {.async: (raises: []).} =
-      p.onSendEvent(e.requestId, SendEventKind.Propagated, e.messageHash, ""),
+      p.onSendEvent(e.requestId, PendingEventKind.Propagated, e.messageHash, ""),
   ).valueOr:
     return err("cannot listen for MessagePropagatedEvent: " & error)
   discard MessageSentEvent.listen(
     ctx,
     proc(e: MessageSentEvent) {.async: (raises: []).} =
-      p.onSendEvent(e.requestId, SendEventKind.Sent, e.messageHash, ""),
+      p.onSendEvent(e.requestId, PendingEventKind.Sent, e.messageHash, ""),
   ).valueOr:
     return err("cannot listen for MessageSentEvent: " & error)
   discard MessageErrorEvent.listen(
     ctx,
     proc(e: MessageErrorEvent) {.async: (raises: []).} =
-      p.onSendEvent(e.requestId, SendEventKind.Failed, e.messageHash, e.error),
+      p.onSendEvent(e.requestId, PendingEventKind.Failed, e.messageHash, e.error),
   ).valueOr:
     return err("cannot listen for MessageErrorEvent: " & error)
   ok()
