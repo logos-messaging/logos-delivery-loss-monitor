@@ -1,6 +1,6 @@
 VENDOR := vendor/logos-delivery
 NIM_VERSION := $(shell sed -n 's/^requires "nim == \([0-9.]*\)".*/\1/p' $(VENDOR)/logos_delivery.nimble)
-LOSSMON_NIM ?= $(HOME)/.nim/nim-$(NIM_VERSION)/bin/nim
+LOSSMON_NIM ?= $(firstword $(wildcard $(abspath $(VENDOR))/nimbledeps/pkgs2/nim-$(NIM_VERSION)-*/bin/nim) $(HOME)/.nim/nim-$(NIM_VERSION)/bin/nim)
 LD_VERSION := $(shell git -C $(VENDOR) describe --tags --always 2>/dev/null)
 RLN_VERSION := $(shell sed -n 's/^LIBRLN_VERSION := //p' $(VENDOR)/Makefile)
 RLN_FILE := $(abspath $(VENDOR))/librln_$(RLN_VERSION).a
