@@ -83,7 +83,6 @@ services:
         LD_VERSION: ${LOSSMON_CLIENT_LD_VERSION:-unknown}
     image: lossmon-client:local
     platform: linux/amd64
-    command: ["--data-dir=/data"]
     read_only: true
     environment:
       LOSSMON_SERVER_URL: http://server:8080
