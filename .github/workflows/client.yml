@@ -1,0 +1,71 @@
+name: client
+
+on:
+  pull_request:
+    paths:
+      - "client/**"
+      - ".github/workflows/client.yml"
+  push:
+    branches: [main]
+    paths:
+      - "client/**"
+      - ".github/workflows/client.yml"
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "lossmon server URL for the live smoke run"
+        required: true
+      preset:
+        description: "Network preset"
+        required: true
+        default: logos.test
+      seconds:
+        description: "Run length in seconds"
+        required: true
+        default: "120"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Unit tests
+        run: docker build --target test client
+      - name: Image
+        run: docker build --target prod --tag lossmon-client:ci client
+      - name: Help text
+        run: docker run --rm lossmon-client:ci --help
+
+  smoke:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Image
+        run: docker build --target prod --tag lossmon-client:smoke client
+      - name: Live smoke run
+        env:
+          SMOKE_TOKEN: ${{ secrets.LOSSMON_SMOKE_TOKEN }}
+          SERVER_URL: ${{ inputs.server_url }}
+          PRESET: ${{ inputs.preset }}
+          SECONDS_TO_RUN: ${{ inputs.seconds }}
+        run: |
+          set -eu
+          printf '%s' "$SMOKE_TOKEN" > "$RUNNER_TEMP/token"
+          chmod 600 "$RUNNER_TEMP/token"
+          mkdir "$RUNNER_TEMP/data"
+          chmod 777 "$RUNNER_TEMP/data"
+          timeout --signal=TERM --preserve-status "$SECONDS_TO_RUN" docker run --rm --init --stop-timeout 20 \
+            --volume "$RUNNER_TEMP/token:/run/token:ro" --volume "$RUNNER_TEMP/data:/data" \
+            lossmon-client:smoke \
+            --server-url="$SERVER_URL" --token-file=/run/token --preset="$PRESET" \
+            --location=eu --role=both --rate=0.2 --payload-bytes=256 || [ $? -eq 143 ]
