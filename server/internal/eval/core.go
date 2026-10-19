@@ -42,20 +42,15 @@ type Core struct {
 	clientToken map[string]string
 	recLimit    map[string]*ratelimit.Bucket
 
-	entries       map[string]*entry
-	heap          pubHeap
-	pendFIFO      *list.List
-	tombFIFO      *list.List
-	orphanList    *list.List
-	orphanCount   int
-	deferred      map[*publish]struct{}
-	expiredProbes map[string]int64
-	expiredFIFO   []expiredProbe
-}
-
-type expiredProbe struct {
-	probeID string
-	at      int64
+	entries     map[string]*entry
+	heap        pubHeap
+	pendFIFO    *list.List
+	tombFIFO    *list.List
+	orphanList  *list.List
+	orphanCount int
+	deferred    map[*publish]struct{}
+	expired     *recentProbes
+	closed      *recentProbes
 }
 
 // NewCore builds an empty state. startMs is the server start time on the evaluation clock.
@@ -70,7 +65,7 @@ func NewCore(cfg *config.Config, m *metrics.Metrics, log *slog.Logger, probeKeyI
 		sessions: map[string]*session{}, retired: map[uint64]*session{},
 		clientRefs: map[string]int{}, clientToken: map[string]string{}, recLimit: map[string]*ratelimit.Bucket{},
 		entries: map[string]*entry{}, pendFIFO: list.New(), tombFIFO: list.New(), orphanList: list.New(),
-		deferred: map[*publish]struct{}{}, expiredProbes: map[string]int64{},
+		deferred: map[*publish]struct{}{}, expired: newRecentProbes(), closed: newRecentProbes(),
 	}
 	c.pad = c.g
 	return c

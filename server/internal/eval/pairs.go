@@ -97,7 +97,7 @@ func (c *Core) applyPublish(s *session, r *Record, corr, now int64, bc *batchCtx
 		}
 		return resOK
 	}
-	if _, late := c.expiredProbes[r.ProbeID]; late {
+	if c.expired.has(r.ProbeID) {
 		c.m.Skipped(metrics.SkipPublishReportLate, 1)
 		return resOK
 	}
@@ -126,6 +126,10 @@ func (c *Core) applyPublish(s *session, r *Record, corr, now int64, bc *batchCtx
 }
 
 func (c *Core) applyReceive(s *session, r *Record, corr, now int64) {
+	if c.closed.has(r.ProbeID) {
+		c.m.Skipped(metrics.SkipAlreadyDecided, 1)
+		return
+	}
 	e := c.entries[r.ProbeID]
 	if e == nil {
 		e = &entry{probeID: r.ProbeID, groups: map[uint64]*recvGroup{}}

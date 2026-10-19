@@ -235,6 +235,7 @@ func TestConfigEndpoint(t *testing.T) {
 	}
 	if c["probe_key"] != "0x"+keyHex || len(c["probe_key_id"].(string)) != 8 || c["preset"] != "logos.dev" ||
 		c["cluster_id"].(float64) != 3 || c["heartbeat_interval_ms"].(float64) != 10000 || c["max_batch_records"].(float64) != 2000 ||
+		c["receipt_max_age_ms"].(float64) != 1_230_000 ||
 		c["server_time_ms"].(float64) != float64(t0) {
 		t.Fatalf("unexpected config: %s", body)
 	}

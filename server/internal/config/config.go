@@ -87,6 +87,9 @@ func (c *Config) GraceMs() int64 { return c.Grace.Milliseconds() }
 // HoldMs returns HOLD in milliseconds.
 func (c *Config) HoldMs() int64 { return c.Hold.Milliseconds() }
 
+// ReceiptMaxAgeMs returns the oldest receipt, by message timestamp, the server accepts: W+G+HOLD.
+func (c *Config) ReceiptMaxAgeMs() int64 { return (c.Window + c.Grace + c.Hold).Milliseconds() }
+
 // MaxClockOffsetMs returns the clock offset bound in milliseconds.
 func (c *Config) MaxClockOffsetMs() int64 { return c.MaxClockOffset.Milliseconds() }
 
