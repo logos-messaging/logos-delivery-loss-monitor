@@ -412,11 +412,53 @@ func TestEndToEndLossOverHTTP(t *testing.T) {
 	if !strings.Contains(text, `lossmon_lost_total{content_topic="/lossmon/1/probe-0/raw",publisher_anonymity="none",publisher_location="eu",publisher_mode="core",receiver_location="eu",receiver_mode="core"} 1`) {
 		t.Errorf("expected one lost pair for the silent receiver:\n%s", text)
 	}
+
+	var st struct {
+		Resolution string `json:"resolution"`
+		Partial    bool   `json:"partial"`
+		Totals     struct {
+			Expected  int64    `json:"expected"`
+			Delivered int64    `json:"delivered"`
+			Lost      int64    `json:"lost"`
+			LossRatio *float64 `json:"loss_ratio"`
+		} `json:"totals"`
+		Breakdown []struct {
+			PublisherToken string `json:"publisher_token"`
+			ReceiverToken  string `json:"receiver_token"`
+			Lost           int64  `json:"lost"`
+		} `json:"breakdown"`
+	}
+	path := "/v1/stats?by=client&from=" + rfc3339(t0-3600_000) + "&to=" + rfc3339(t0+3600_000)
+	resp, body := r.do("GET", path, tokQ, nil)
+	if resp.StatusCode != 200 {
+		t.Fatalf("stats: %d %s", resp.StatusCode, body)
+	}
+	if err := json.Unmarshal(body, &st); err != nil {
+		t.Fatal(err)
+	}
+	if st.Resolution != "10m" || st.Totals.Expected != 2 || st.Totals.Delivered != 1 || st.Totals.Lost != 1 ||
+		st.Totals.LossRatio == nil || *st.Totals.LossRatio != 0.5 {
+		t.Fatalf("stats totals: %s", body)
+	}
+	if !st.Partial {
+		t.Errorf("a range starting before the server is partial: %s", body)
+	}
+	if len(st.Breakdown) != 2 {
+		t.Fatalf("breakdown: %s", body)
+	}
+	for _, row := range st.Breakdown {
+		if row.PublisherToken != "op" || (row.ReceiverToken != "op" && row.ReceiverToken != "op2") {
+			t.Errorf("token names in breakdown: %s", body)
+		}
+		if row.Lost == 1 && row.ReceiverToken != "op2" {
+			t.Errorf("the silent receiver used op2: %s", body)
+		}
+	}
 }
 
 func TestMetricsAndHealthzAreNotOnTheAPIPort(t *testing.T) {
 	r := newRig(t)
-	for _, p := range []string{"/metrics", "/healthz", "/v1/stats", "/nope"} {
+	for _, p := range []string{"/metrics", "/healthz", "/nope"} {
 		if got := r.status("GET", p, tokOp, nil); got != 404 {
 			t.Errorf("%s on API port: %d, want 404", p, got)
 		}

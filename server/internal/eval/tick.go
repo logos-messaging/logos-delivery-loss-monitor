@@ -22,6 +22,7 @@ func (c *Core) Tick(now int64) {
 	c.expireTombstones(now)
 	c.expireOrphans(now)
 	c.expireSessions(now)
+	c.stats.Prune(now)
 	c.refreshGauges(now)
 }
 

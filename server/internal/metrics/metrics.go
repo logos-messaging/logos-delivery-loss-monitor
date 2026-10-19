@@ -181,6 +181,15 @@ func (m *Metrics) pairValues(l PairLabels) []string {
 	return []string{m.topic(l.Topic), enum(l.PubMode, modes), enum(l.RecvMode, modes), m.Location(l.PubLoc), m.Location(l.RecvLoc), enum(l.PubAnon, anonymities)}
 }
 
+// Canonical maps pair labels onto their allowlisted values, using "other" for anything else.
+func (m *Metrics) Canonical(l PairLabels) PairLabels {
+	v := m.pairValues(l)
+	return PairLabels{Topic: v[0], PubMode: v[1], RecvMode: v[2], PubLoc: v[3], RecvLoc: v[4], PubAnon: v[5]}
+}
+
+// Reasons returns the indeterminate reason values, in the order stats.Reasons uses.
+func Reasons() []string { return append([]string(nil), reasons...) }
+
 func (m *Metrics) pubValues(l PubLabels) []string {
 	return []string{m.topic(l.Topic), enum(l.Mode, modes), m.Location(l.Loc), enum(l.Anon, anonymities)}
 }
