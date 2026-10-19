@@ -36,7 +36,7 @@ func (c *Core) Ingest(now int64, token, id string, b *Batch) (IngestResult, *api
 		return IngestResult{}, apierr.New(http.StatusForbidden, apierr.SessionOwned, "session belongs to another token")
 	}
 
-	s.addSample(now - b.SentAtMs)
+	s.addSample(arrivedAt(now, b.ArrivedMs) - b.SentAtMs)
 	c.checkSkew(s, now)
 	s.lastBatchAt = now
 
@@ -51,7 +51,7 @@ func (c *Core) Ingest(now int64, token, id string, b *Batch) (IngestResult, *api
 		"ok", bc.results[resOK], "duplicate_seq", bc.results[resDuplicateSeq], "invalid", bc.results[resInvalid],
 		"over_budget", bc.results[resOverBudget],
 		"gap_receiver_gap", bc.gaps[metrics.ReasonReceiverGap], "gap_rejected", bc.gaps[metrics.ReasonRejected])
-	c.enforceCaps()
+	c.enforceCaps(now)
 	return IngestResult{AckedSeq: s.lastSeq}, nil
 }
 
@@ -62,6 +62,7 @@ func (c *Core) advance(s *session, seq, at int64) {
 // processRecord runs the per-record rules in the contract's order and returns the ingest result.
 func (c *Core) processRecord(s *session, r *Record, now int64, bc *batchCtx) string {
 	if r.Seq < 0 {
+		c.addLooseGap(s, s.lastAt, now, metrics.ReasonRejected, bc)
 		return resInvalid
 	}
 	if s.hasSeq && r.Seq <= s.lastSeq {
@@ -79,7 +80,7 @@ func (c *Core) processRecord(s *session, r *Record, now int64, bc *batchCtx) str
 		if reachable {
 			to = corr
 		}
-		c.addGap(s, s.lastAt, to, metrics.ReasonReceiverGap, bc)
+		c.addLooseGap(s, s.lastAt, to, metrics.ReasonReceiverGap, bc)
 	}
 
 	if s.ended || !c.validRecord(s, r, corr, reachable) {
@@ -88,10 +89,10 @@ func (c *Core) processRecord(s *session, r *Record, now int64, bc *batchCtx) str
 			return resInvalid
 		}
 		if reachable {
-			c.addGap(s, corr, corr, metrics.ReasonRejected, bc)
+			c.reject(s, r, corr, corr, now, bc)
 			c.advance(s, r.Seq, corr)
 		} else {
-			c.addGap(s, s.lastAt, now, metrics.ReasonRejected, bc)
+			c.reject(s, r, s.lastAt, now, now, bc)
 			c.advance(s, r.Seq, now)
 		}
 		return resInvalid
@@ -106,7 +107,7 @@ func (c *Core) processRecord(s *session, r *Record, now int64, bc *batchCtx) str
 		return resOK
 	}
 	if r.Type != typeEnd && !c.withinBudget(s, r, corr, bc) {
-		c.addGap(s, corr, corr, metrics.ReasonRejected, bc)
+		c.reject(s, r, corr, corr, now, bc)
 		c.advance(s, r.Seq, corr)
 		return resOverBudget
 	}
@@ -114,6 +115,17 @@ func (c *Core) processRecord(s *session, r *Record, now int64, bc *batchCtx) str
 	res := c.apply(s, r, corr, now, bc)
 	c.advance(s, r.Seq, corr)
 	return res
+}
+
+// reject opens a rejected gap for a record that was not applied. A receipt with a usable probe_id blinds
+// that probe for the receiver; any other record blinds publishes reported up to W later.
+func (c *Core) reject(s *session, r *Record, from, to, now int64, bc *batchCtx) {
+	if r.Type == typeReceive && probeIDRe.MatchString(r.ProbeID) {
+		c.blindProbe(s, r.ProbeID, metrics.ReasonRejected, to, now)
+		c.addGap(s, from, to, metrics.ReasonRejected, bc)
+		return
+	}
+	c.addLooseGap(s, from, to, metrics.ReasonRejected, bc)
 }
 
 func (c *Core) validRecord(s *session, r *Record, corr int64, reachable bool) bool {

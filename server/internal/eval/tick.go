@@ -57,6 +57,7 @@ func (c *Core) expireOrphans(now int64) {
 	}
 	c.expired.prune(now, ttl, c.cfg.MaxOrphans)
 	c.closed.prune(now, ttl, c.cfg.MaxOrphans)
+	c.blind.prune(now, c.w+ttl)
 }
 
 func (c *Core) expireSessions(now int64) {

@@ -51,6 +51,7 @@ type Core struct {
 	deferred    map[*publish]struct{}
 	expired     *recentProbes
 	closed      *recentProbes
+	blind       *blindSet
 }
 
 // NewCore builds an empty state. startMs is the server start time on the evaluation clock.
@@ -65,7 +66,7 @@ func NewCore(cfg *config.Config, m *metrics.Metrics, log *slog.Logger, probeKeyI
 		sessions: map[string]*session{}, retired: map[uint64]*session{},
 		clientRefs: map[string]int{}, clientToken: map[string]string{}, recLimit: map[string]*ratelimit.Bucket{},
 		entries: map[string]*entry{}, pendFIFO: list.New(), tombFIFO: list.New(), orphanList: list.New(),
-		deferred: map[*publish]struct{}{}, expired: newRecentProbes(), closed: newRecentProbes(),
+		deferred: map[*publish]struct{}{}, expired: newRecentProbes(), closed: newRecentProbes(), blind: newBlindSet(),
 	}
 	c.pad = c.g
 	return c
@@ -76,6 +77,23 @@ func (c *Core) addGap(s *session, from, to int64, reason string, bc *batchCtx) {
 	c.m.CoverageGap(reason)
 	if bc != nil {
 		bc.gaps[reason]++
+	}
+}
+
+// addLooseGap is addGap for drops whose probe is unknown. It also covers publishes reported up to W later.
+func (c *Core) addLooseGap(s *session, from, to int64, reason string, bc *batchCtx) {
+	s.addGap(from, to+c.pad+c.w, reason, c.cfg.MaxGapsPerSession)
+	c.m.CoverageGap(reason)
+	if bc != nil {
+		bc.gaps[reason]++
+	}
+}
+
+// blindProbe marks the receiver's view of probeID as lost. Entries pushed out of the bounded set
+// fall back to a loose time gap.
+func (c *Core) blindProbe(s *session, probeID, reason string, at, now int64) {
+	for _, e := range c.blind.add(s, probeID, reason, at, now, c.cfg.MaxOrphans) {
+		e.r.addGap(e.at, e.at+c.pad+c.w, e.reason, c.cfg.MaxGapsPerSession)
 	}
 }
 
@@ -110,7 +128,8 @@ func (c *Core) Register(now int64, token, id string, req *RegisterRequest) (Regi
 	if req.ProbeKeyID != c.probeKeyID {
 		return RegisterResult{}, apierr.New(http.StatusConflict, apierr.ProbeKeyChanged, "fetch /v1/config again")
 	}
-	topics, apiErr := c.validateRegister(now, req)
+	arrived := arrivedAt(now, req.ArrivedMs)
+	topics, apiErr := c.validateRegister(arrived, req)
 	if apiErr != nil {
 		return RegisterResult{}, apiErr
 	}
@@ -121,7 +140,7 @@ func (c *Core) Register(now int64, token, id string, req *RegisterRequest) (Regi
 		if ex.ended || ex.stable != stable {
 			return RegisterResult{}, apierr.New(http.StatusConflict, apierr.SessionConflict, "session exists with different parameters")
 		}
-		ex.addSample(now - req.ClientTimeMs)
+		ex.addSample(arrived - req.ClientTimeMs)
 		c.checkSkew(ex, now)
 		return RegisterResult{ServerTimeMs: now, LocationLabel: label}, nil
 	}
@@ -153,7 +172,7 @@ func (c *Core) Register(now int64, token, id string, req *RegisterRequest) (Regi
 	for _, t := range topics {
 		s.topicSet[t] = true
 	}
-	s.addSample(now - req.ClientTimeMs)
+	s.addSample(arrived - req.ClientTimeMs)
 	c.sessions[id] = s
 	c.clientRefs[req.ClientID]++
 	c.clientToken[req.ClientID] = token
