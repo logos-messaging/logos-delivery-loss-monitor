@@ -5,7 +5,6 @@ Compose stack for the lossmon server, Prometheus and Grafana. Images are pinned 
 ## Run
 
 ```
-git submodule update --init --recursive    # the client image builds from the vendored logos-delivery
 cd deploy
 cp .env.example .env                       # set GRAFANA_ADMIN_PASSWORD, preset and location
 ./init-secrets.sh                          # probe key, listener token, tokens file

@@ -79,8 +79,6 @@ services:
     profiles: [listener]
     build:
       context: ../client
-      args:
-        LD_VERSION: ${LOSSMON_CLIENT_LD_VERSION:-unknown}
     image: lossmon-client:local
     platform: linux/amd64
     read_only: true
