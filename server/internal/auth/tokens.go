@@ -5,10 +5,12 @@ import (
 	"bufio"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"sync/atomic"
 )
@@ -26,6 +28,9 @@ const (
 // MinTokenLen is the shortest accepted token.
 const MinTokenLen = 32
 
+// HashPrefix marks a token column that holds the hex SHA-256 of the token instead of the token.
+const HashPrefix = "sha256:"
+
 // Identity is the authenticated caller. Name is the only token-derived value that may be logged.
 type Identity struct {
 	Name  string
@@ -42,7 +47,25 @@ type Store struct {
 	entries atomic.Pointer[[]entry]
 }
 
-// parse reads "<name> <scope> <token>" lines. Blank lines and lines starting with # are ignored.
+// parseDigest returns the SHA-256 digest for a token column: either "sha256:<64 hex>" or a plain token.
+func parseDigest(col string) ([sha256.Size]byte, error) {
+	var d [sha256.Size]byte
+	if hexDigest, ok := strings.CutPrefix(col, HashPrefix); ok {
+		b, err := hex.DecodeString(hexDigest)
+		if err != nil || len(b) != sha256.Size {
+			return d, fmt.Errorf("want %s followed by %d hex characters", HashPrefix, 2*sha256.Size)
+		}
+		copy(d[:], b)
+		return d, nil
+	}
+	if len(col) < MinTokenLen {
+		return d, fmt.Errorf("token is shorter than %d characters", MinTokenLen)
+	}
+	return sha256.Sum256([]byte(col)), nil
+}
+
+// parse reads "<name> <scope> <token>" lines, where <token> is a plain token or "sha256:<hex>".
+// Blank lines and lines starting with # are ignored.
 func parse(r io.Reader) ([]entry, error) {
 	var out []entry
 	names, digests := map[string]bool{}, map[[sha256.Size]byte]bool{}
@@ -60,10 +83,10 @@ func parse(r io.Reader) ([]entry, error) {
 		if scope != ScopeReport && scope != ScopeQuery {
 			return nil, fmt.Errorf("tokens file line %d: unknown scope", n)
 		}
-		if len(tok) < MinTokenLen {
-			return nil, fmt.Errorf("tokens file line %d: token %q is shorter than %d characters", n, name, MinTokenLen)
+		d, err := parseDigest(tok)
+		if err != nil {
+			return nil, fmt.Errorf("tokens file line %d: token %q: %w", n, name, err)
 		}
-		d := sha256.Sum256([]byte(tok))
 		if names[name] {
 			return nil, fmt.Errorf("tokens file line %d: duplicate token name %q", n, name)
 		}
@@ -95,6 +118,20 @@ func (s *Store) Load(path string) error {
 	}
 	s.entries.Store(&es)
 	return nil
+}
+
+// Names returns the sorted names of the active tokens.
+func (s *Store) Names() []string {
+	es := s.entries.Load()
+	if es == nil {
+		return nil
+	}
+	names := make([]string, 0, len(*es))
+	for i := range *es {
+		names = append(names, (*es)[i].Name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // Lookup returns the identity for a presented token. It scans every entry so timing does not depend on the match position.

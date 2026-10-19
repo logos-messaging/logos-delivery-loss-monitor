@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -98,7 +99,8 @@ func reloadOnSIGHUP(ctx context.Context, tokens *auth.Store, path string, log *s
 				log.Error("token reload failed, keeping previous tokens", "error", err)
 				continue
 			}
-			log.Info("tokens reloaded")
+			names := tokens.Names()
+			log.Info("tokens reloaded", "count", len(names), "names", strings.Join(names, ","))
 		}
 	}
 }
