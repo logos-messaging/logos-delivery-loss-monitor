@@ -1,0 +1,26 @@
+{
+	admin off
+	log default {
+		exclude http.log.error
+	}
+	servers {
+		timeouts {
+			read_header 10s
+			read_body 30s
+			idle 60s
+		}
+		max_header_size 16KB
+	}
+}
+
+{$LOSSMON_PUBLIC_HOST} {
+	handle /v1/* {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy server:8080
+	}
+	handle {
+		respond 404
+	}
+}

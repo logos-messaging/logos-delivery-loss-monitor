@@ -1,2 +1,4 @@
 client/build/
 client/nimcache/
+deploy/.env
+deploy/secrets/
