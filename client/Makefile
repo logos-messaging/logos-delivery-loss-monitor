@@ -11,13 +11,14 @@ LOSSMON_NIM ?= $(firstword $(shell ls -d $(CURDIR)/nimbledeps/pkgs2/nim-$(NIM_VE
 LD_VERSION ?= v$(shell ls -d nimbledeps/pkgs2/logos_delivery-* 2>/dev/null | sed 's/.*logos_delivery-\([0-9.]*\)-.*/\1/')
 RLN_FILE := $(CURDIR)/build/librln_$(RLN_VERSION).a
 LOG_LEVEL ?= NOTICE
+LINK_FLAGS ?=
 NIM_TEST_FLAGS := --mm:refc --hints:off --verbosity:0
 DEPS_STAMP := nimbledeps/.nimble-setup
 
 NIM_FLAGS = --mm:refc -d:release -d:chronicles_log_level=$(LOG_LEVEL) \
 	-d:libp2p_mix_experimental_exit_is_dest -d:libp2p_quic_support \
 	-d:git_version=$(LD_VERSION) -d:lossmon_ld_version=$(LD_VERSION) \
-	--passL:$(RLN_FILE) --passL:-lm
+	--passL:$(RLN_FILE) --passL:-lm $(LINK_FLAGS)
 
 .PHONY: lossmon-client deps test clean distclean
 
@@ -31,7 +32,7 @@ $(NIMBLE_BIN)/nimble:
 	scripts/install-nimble.sh $(NIMBLE_VERSION) $(NIMBLE_BIN)
 
 $(DEPS_STAMP): lossmon_client.nimble nimble.lock | $(NIMBLE_BIN)/nimble
-	nimble setup --localdeps -y
+	$(NIMBLE_BIN)/nimble setup --localdeps -y
 	scripts/native-deps.sh nimbledeps
 	touch $@
 

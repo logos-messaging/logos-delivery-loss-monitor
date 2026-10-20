@@ -17,6 +17,10 @@ docker compose --profile listener up -d --build
 
 Grafana is on `http://127.0.0.1:3000`; see [`deploy/README.md`](deploy/README.md) for profiles, tokens and other clients.
 
+## Binaries
+
+Each [release](https://github.com/logos-messaging/logos-delivery-loss-monitor/releases) ships `lossmon-server` (Linux and macOS, amd64 and arm64) and `lossmon-client` (Linux amd64, macOS amd64 and arm64) with a `SHA256SUMS` file.
+
 ## License
 
 Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your option.

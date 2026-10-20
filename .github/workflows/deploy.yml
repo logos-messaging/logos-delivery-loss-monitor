@@ -40,7 +40,7 @@ jobs:
       - name: Images are pinned by digest
         run: |
           docker compose --profile listener --profile public config --images | grep -v '^lossmon-' | grep -v '@sha256:[0-9a-f]\{64\}$' && exit 1 || true
-          grep -h '^FROM ' ../server/Dockerfile ../client/Dockerfile | grep -v -E '^FROM (build|binary) ' | grep -v '@sha256:[0-9a-f]\{64\}' && exit 1 || true
+          grep -h '^FROM ' ../server/Dockerfile ../client/Dockerfile | grep -v -E '^FROM (build|binary|static|scratch)( |$)' | grep -v '@sha256:[0-9a-f]\{64\}' && exit 1 || true
       - name: Dashboard JSON
         run: |
           jq -e '.uid and (.panels | length > 0)' grafana/dashboards/lossmon.json > /dev/null
