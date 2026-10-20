@@ -32,7 +32,7 @@ $(NIMBLE_BIN)/nimble:
 	scripts/install-nimble.sh $(NIMBLE_VERSION) $(NIMBLE_BIN)
 
 $(DEPS_STAMP): lossmon_client.nimble nimble.lock | $(NIMBLE_BIN)/nimble
-	nimble setup --localdeps -y
+	$(NIMBLE_BIN)/nimble setup --localdeps -y
 	scripts/native-deps.sh nimbledeps
 	touch $@
 
