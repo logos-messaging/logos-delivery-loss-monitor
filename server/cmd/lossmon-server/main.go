@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -22,7 +23,14 @@ import (
 
 const exitConfig = 2
 
+// version is set at build time with -ldflags "-X main.version=...".
+var version = "dev"
+
 func main() {
+	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "-version") {
+		fmt.Println("lossmon-server " + version)
+		return
+	}
 	os.Exit(run())
 }
 
@@ -66,7 +74,7 @@ func run() int {
 	for _, s := range []*http.Server{apiSrv, metricsSrv} {
 		go func() { errc <- s.ListenAndServe() }()
 	}
-	log.Info("lossmon-server started", "api", cfg.Listen, "metrics", cfg.MetricsListen, "preset", cfg.Preset, "probe_key_id", key.ID)
+	log.Info("lossmon-server started", "version", version, "api", cfg.Listen, "metrics", cfg.MetricsListen, "preset", cfg.Preset, "probe_key_id", key.ID)
 
 	code := 0
 	select {
