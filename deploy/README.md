@@ -26,7 +26,7 @@ The client image builds for linux/amd64 only.
 
 ### Host already runs a web server
 
-Leave the `public` profile off. On the existing proxy, add a virtual host for the public name that forwards `/v1/*` and exactly `GET`/`HEAD /` (the landing page) to `127.0.0.1:${LOSSMON_SERVER_PORT}`, answers 404 for everything else, limits request bodies to 1 MiB and does not log client addresses. Set `LOSSMON_PUBLIC_HOST` in `.env` too (e.g. `lossmon.example.org`): the server builds the landing page URL from it. Do not publish port 8080 beyond loopback and do not use `--insecure-http`: both put bearer tokens on the wire in clear.
+Leave the `public` profile off. On the existing proxy, add a virtual host for the public name that routes exactly two things to `127.0.0.1:${LOSSMON_SERVER_PORT}`: `GET`/`HEAD /` (the landing page) and `/v1/*`. Answer 404 for everything else, so no catch-all `location /` or `/*` pass-through. Limit request bodies to 1 MiB and do not log client addresses. Send `Strict-Transport-Security` too: the page carries a `curl | sh` line. Set `LOSSMON_PUBLIC_HOST` in `.env` (e.g. `lossmon.example.org`) so the server builds the landing page URL from it. Do not publish port 8080 beyond loopback and do not use `--insecure-http`: both put bearer tokens on the wire in clear.
 
 ## Profiles
 
@@ -37,14 +37,33 @@ Leave the `public` profile off. On the existing proxy, add a virtual host for th
 
 ## Landing page
 
-The server answers `GET /` with a static page that tells volunteers how to install and run `lossmon-client` against this server. It needs no JavaScript and makes no third-party requests. The page is rendered once at startup from the server's own config:
+The server answers `GET /` with a static page that tells volunteers how to install and run `lossmon-client` against this server. It needs no JavaScript and makes no third-party requests. It is rendered once at startup, so restart the server after changing any of these:
 
-- `LOSSMON_PUBLIC_URL` is the URL shown in the run command. Compose derives it from `LOSSMON_PUBLIC_HOST` (`https://<host>`); with no host it stays empty and the page shows `https://<server>`. Outside compose it must be `https://host[:port]` with no path, query or credentials, and a plain ASCII hostname (IDNs in punycode).
-- `LOSSMON_LOCATIONS` entries and the preset may only use `a-z`, `0-9`, `.`, `_` and `-`, and must start with a letter or digit. The server refuses to start otherwise.
-- The install line is pinned to the server's own version. The image gets it from `LOSSMON_SERVER_VERSION`; when that is empty or not a release (`dev`), the page says the server is not a release build and shows no install line.
-- The page is the only route served without authentication. The server must keep authenticating every `/v1/*` route, and nothing else unauthenticated may be added to `api.Handler()`.
+- `LOSSMON_PUBLIC_HOST` (`.env`, required for the `public` profile): a hostname, no scheme or port. Compose passes `https://<host>` to the server as `LOSSMON_PUBLIC_URL`, the URL shown in the run command. With no host the page shows `https://<server>`. Outside compose, `LOSSMON_PUBLIC_URL` must be `https://host[:port]` with no path, query or credentials, and an ASCII hostname (IDNs in punycode).
+- `LOSSMON_LOCATIONS` and `LOSSMON_PRESET` appear in the run command. See [Before upgrading](#before-upgrading).
+- `LOSSMON_SERVER_VERSION` (`.env`, release tag without the `v`) pins the install line to the server's own version. When it is empty or not a release, the page says the server is not a release build and shows no install line.
 
-Release flow, once the GitHub release for the tag is published (its draft links return 404 until then):
+Caddy sends the page and `/v1/*` only. The page is the only route served without authentication: the server must keep authenticating every `/v1/*` route, and nothing else unauthenticated may be added to `api.Handler()`.
+
+### Before upgrading
+
+The server now refuses to start, and Docker restarts it in a loop, if any of these is invalid:
+
+- A `LOSSMON_LOCATIONS` entry: lowercase `a-z`, `0-9`, `.`, `_`, `-`, starting with a letter or digit, at most 32 characters. Log: `invalid location`.
+- `LOSSMON_PRESET`, after normalisation to lowercase: the same characters, at most 64. Log: `invalid preset`.
+- The URL built from `LOSSMON_PUBLIC_HOST`: a trailing dot, an underscore, a scheme or a port in the host. Log: `LOSSMON_PUBLIC_URL must be https://host[:port]...`.
+
+Check the running deployment's `.env` before `docker compose up -d --build`:
+
+```
+grep -E '^LOSSMON_(LOCATIONS|PRESET|PUBLIC_HOST)=' .env
+```
+
+If the server restarts in a loop after the upgrade, `docker compose logs --tail 20 server` shows which value to fix.
+
+### Release deploy
+
+Once the GitHub release for the tag is published (its draft links return 404 until then):
 
 ```
 git fetch --tags && git checkout v0.2.0
