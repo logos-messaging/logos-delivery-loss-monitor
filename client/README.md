@@ -48,9 +48,9 @@ A binary downloaded in a browser is quarantined by macOS; clear it with `xattr -
 
 For a client that keeps running after the SSH session closes and comes back after a reboot. The image downloads the release binary of the pinned version, verifies its checksum, and runs it as a non-root user from an otherwise empty image. It is `linux/amd64` only. On arm64 Docker Desktop runs it under emulation. On arm64 Linux, install a persistent registration (Debian/Ubuntu: `sudo apt install qemu-user-static binfmt-support`), or re-run `docker run --privileged --rm tonistiigi/binfmt --install amd64` after every reboot.
 
-Needs Docker with Compose v2.
+Needs Docker with Compose v2.6.0 or later (`docker compose version`).
 
-**The token.** It is the server's `report` token, which the server admin creates with `./init-secrets.sh add-token <name> report` (see [Tokens](../deploy/README.md#tokens)) and sends to you privately; the server keeps only its hash, so it cannot be recovered later. You save it as the file `deploy/client/token`. Compose mounts that file into the container as the secret `/run/secrets/lossmon_token`, and the client reads it from there (`LOSSMON_TOKEN_FILE`, the same as `--token-file`). With plain `docker run` the file is mounted at `/run/token` instead. The token is never an environment variable or a command-line argument, so it does not show in `docker inspect` or `ps`.
+**The token.** It is the server's `report` token, which the server admin creates with `./init-secrets.sh add-token <name> report` (see [Tokens](../deploy/README.md#tokens)) and sends to you privately; the server keeps only its hash, so it cannot be recovered later. You put it in `deploy/client/.env` as `LOSSMON_TOKEN`. Compose turns that variable into the secret `/run/secrets/lossmon_token`, and the client reads it from there (`LOSSMON_TOKEN_FILE`, the same as `--token-file`). The token is never an environment variable of the container or a command-line argument, so it does not show in `docker inspect` or `ps`. The secret file lives in the container's writable layer, which is why the root filesystem is not read-only. Keep `.env` at mode 600; it is not committed.
 
 ```
 git clone --depth 1 --branch v<version> https://github.com/logos-messaging/logos-delivery-loss-monitor
@@ -58,11 +58,12 @@ cd logos-delivery-loss-monitor/deploy/client
 cp .env.example .env
 ```
 
-Replace `<version>` with the release tag you are installing; it must be a release that includes `deploy/client` (v0.3.0 or later). Edit `.env` and set `LOSSMON_VERSION`, `LOSSMON_SERVER_URL` and `LOSSMON_LOCATION`; for a preset other than `logos.dev` and `logos.test`, also set `LOSSMON_ALLOW_PRESET` to that preset. Then write the token to `deploy/client/token`: the first command reads it without echo so it stays out of shell history. Then start the client. `chmod 644` lets the container user (uid 10001) read the token.
+Replace `<version>` with the release tag you are installing; it must be a release that includes `deploy/client` (v0.3.0 or later). Edit `.env` and set `LOSSMON_VERSION`, `LOSSMON_SERVER_URL` and `LOSSMON_LOCATION`; for a preset other than `logos.dev` and `logos.test`, also set `LOSSMON_ALLOW_PRESET` to that preset. Then add the token to `.env`: the first command reads it without echo, so it stays out of shell history and `ps`, and writes the `LOSSMON_TOKEN=` line, replacing any existing one (run it again to change the token; it works in bash and zsh). Then start the client.
 
 ```
-printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; printf '%s\n' "$t" > token; unset t
-chmod 644 token
+printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo
+case $t in *\'*) echo "the token must not contain a single quote" >&2 ;; *) (umask 077; { grep -v '^LOSSMON_TOKEN=' .env; printf "LOSSMON_TOKEN='%s'\n" "$t"; } > .env.new) && mv .env.new .env ;; esac
+unset t
 docker compose up -d --build
 ```
 
@@ -78,11 +79,18 @@ docker compose up -d --build
 | Upgrade | `git fetch --depth 1 origin tag v<new> && git checkout v<new>`, set the new `LOSSMON_VERSION` in `.env`, then `docker compose up -d --build` |
 | Check the version | `docker compose run --rm client --version` |
 
-Settings come from `.env`: `LOSSMON_SERVER_URL`, `LOSSMON_LOCATION`, `LOSSMON_PRESET`, `LOSSMON_MODE`, `LOSSMON_ROLE` and `LOSSMON_RATE`. Any other option in [Run](#run) is passed the same way, as `LOSSMON_<NAME>` under `environment:` in `compose.yaml`. Changing `.env` takes effect with `docker compose up -d`.
+Settings come from `.env`: `LOSSMON_SERVER_URL`, `LOSSMON_LOCATION`, `LOSSMON_PRESET`, `LOSSMON_MODE`, `LOSSMON_ROLE` and `LOSSMON_RATE`. Any other option in [Run](#run) is passed the same way, as `LOSSMON_<NAME>` under `environment:` in `compose.yaml`. Changing `.env`, including the token, takes effect with `docker compose up -d`.
 
-The client id and node state live in the `lossmon-client_data` volume and survive restarts and upgrades. `docker compose down -v` deletes them, and the client registers again as a new client. On a shared host, keep the token private with `sudo chown 10001 token && chmod 400 token` instead of `chmod 644`.
+The client id and node state live in the `lossmon-client_data` volume and survive restarts and upgrades. `docker compose down -v` deletes them, and the client registers again as a new client.
 
-Without Compose, from the repository root, with the token file in `deploy/client/token` as above:
+Without Compose, the token is a file that you bind-mount, at `/run/token` here. Create it from the repository root; `chmod 644` lets the container user (uid 10001) read it, and on a shared host `sudo chown 10001 deploy/client/token && chmod 400 deploy/client/token` keeps it private instead:
+
+```
+printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; printf '%s\n' "$t" > deploy/client/token; unset t
+chmod 644 deploy/client/token
+```
+
+Then build and run, still from the repository root:
 
 ```
 docker build --platform linux/amd64 --build-arg LOSSMON_VERSION=0.2.0 -t lossmon-client:0.2.0 deploy/client

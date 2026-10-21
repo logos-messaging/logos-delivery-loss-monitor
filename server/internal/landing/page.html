@@ -36,7 +36,7 @@ footer { margin-top: 3rem; font-size: 0.85em; color: #555; }
 <label for="tab-binary">Binary</label>
 
 <div class="panel" id="panel-docker">
-<p>Keeps running after you close the SSH session and comes back after a reboot. Needs Docker with Compose v2 on linux/amd64.</p>
+<p>Keeps running after you close the SSH session and comes back after a reboot. Needs Docker with Compose v2.6.0 or later on linux/amd64.</p>
 {{if .Release -}}
 <h2>1. Configure</h2>
 {{template "location" . -}}
@@ -51,10 +51,11 @@ LOSSMON_PRESET={{.Preset}}
 {{end}}EOF</code></pre>
 
 <h2>2. Token</h2>
-<p>Get the token from the admin. Save it as the file <code>token</code> in this directory. It is read without echo, so it stays out of shell history:</p>
-<pre><code>printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; printf '%s\n' "$t" &gt; token; unset t
-chmod 644 token</code></pre>
-<p>Compose mounts the file into the container. The token is never passed as an environment variable or an argument.</p>
+<p>Get the token from the admin. Add it to <code>.env</code>. It is read without echo, so it stays out of shell history and <code>ps</code>, and it replaces any earlier token line:</p>
+<pre><code>printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo
+case $t in *\'*) echo "the token must not contain a single quote" &gt;&amp;2 ;; *) (umask 077; { grep -v '^LOSSMON_TOKEN=' .env; printf "LOSSMON_TOKEN='%s'\n" "$t"; } &gt; .env.new) &amp;&amp; mv .env.new .env ;; esac
+unset t</code></pre>
+<p>Compose passes the token to the container as a secret file. It is not an environment variable of the container or an argument.</p>
 
 <h2>3. Run</h2>
 <pre><code>docker compose up -d --build

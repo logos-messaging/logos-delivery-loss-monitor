@@ -9,7 +9,6 @@ services:
     image: lossmon-client:${LOSSMON_VERSION}
     platform: linux/amd64
     restart: unless-stopped
-    read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     logging: {driver: local, options: {max-size: "10m", max-file: "5"}}
@@ -29,7 +28,7 @@ services:
 
 secrets:
   lossmon_token:
-    file: ./token
+    environment: LOSSMON_TOKEN
 
 volumes:
   data:

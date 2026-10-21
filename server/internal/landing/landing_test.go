@@ -175,7 +175,9 @@ func TestDockerTabIsDefault(t *testing.T) {
 		"LOSSMON_ALLOW_PRESET=status.prod",
 		"git clone --depth 1 --branch v0.2.0 ",
 		"deploy/client",
-		"&gt; token",
+		"LOSSMON_TOKEN='%s'",
+		"&gt; .env.new",
+		"mv .env.new .env",
 		"docker compose up -d --build",
 		"docker compose logs -f client",
 	} {
