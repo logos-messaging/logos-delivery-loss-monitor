@@ -44,6 +44,47 @@ lossmon-client --data-dir="$HOME/.local/share/lossmon" --server-url=... --token-
 
 A binary downloaded in a browser is quarantined by macOS; clear it with `xattr -d com.apple.quarantine lossmon-client`. Downloads through `curl` are not affected.
 
+## Run detached with Docker
+
+For a client that keeps running after the SSH session closes and comes back after a reboot. The image downloads the release binary of the pinned version, verifies its checksum, and runs it as a non-root user from an otherwise empty image. It is `linux/amd64` only; on an arm64 host Docker runs it under emulation.
+
+Needs Docker with Compose v2.
+
+```
+git clone https://github.com/logos-messaging/logos-delivery-loss-monitor
+cd logos-delivery-loss-monitor/deploy/client
+cp .env.example .env              # set LOSSMON_VERSION, LOSSMON_SERVER_URL, LOSSMON_LOCATION
+printf '%s\n' '<your token>' > token
+chmod 644 token                   # the container user (uid 10001) must be able to read it
+docker compose up -d --build
+```
+
+`up -d` returns at once, so the terminal is free. The container restarts on failure and on boot (`restart: unless-stopped`) unless you stopped it.
+
+| Task | Command (in `deploy/client`) |
+|---|---|
+| Follow the logs | `docker compose logs -f client` (Ctrl-C stops following, not the client) |
+| Status | `docker compose ps` |
+| Stop, keep state | `docker compose stop` |
+| Start again | `docker compose start` |
+| Stop and remove the container | `docker compose down` |
+| Upgrade | set the new `LOSSMON_VERSION` in `.env`, then `docker compose up -d --build` |
+| Check the version | `docker compose run --rm client --version` |
+
+Settings come from `.env`: `LOSSMON_SERVER_URL`, `LOSSMON_LOCATION`, `LOSSMON_PRESET`, `LOSSMON_MODE`, `LOSSMON_ROLE` and `LOSSMON_RATE`. Any other option in [Run](#run) is passed the same way, as `LOSSMON_<NAME>` under `environment:` in `compose.yaml`. Changing `.env` takes effect with `docker compose up -d`.
+
+The client id and node state live in the `lossmon-client_data` volume and survive restarts and upgrades. `docker compose down -v` deletes them, and the client registers again as a new client. On a shared host, keep the token private with `sudo chown 10001 token && chmod 400 token` instead of `chmod 644`.
+
+Without Compose:
+
+```
+docker build --platform linux/amd64 --build-arg LOSSMON_VERSION=0.2.0 -t lossmon-client:0.2.0 deploy/client
+docker run -d --name lossmon-client --restart unless-stopped --platform linux/amd64 --read-only \
+  -v "$PWD/token:/run/token:ro" -v lossmon-data:/data lossmon-client:0.2.0 \
+  --server-url=https://lossmon.example.org --token-file=/run/token --location=eu
+docker logs -f lossmon-client
+```
+
 ## Build
 
 Logos Delivery `v0.39.2` is a Nimble dependency (`lossmon_client.nimble`), locked in `nimble.lock` to the dependency set that release was tested with. There are no submodules.

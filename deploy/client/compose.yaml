@@ -1,0 +1,34 @@
+name: lossmon-client
+
+services:
+  client:
+    build:
+      context: .
+      args:
+        LOSSMON_VERSION: ${LOSSMON_VERSION:?set LOSSMON_VERSION in .env}
+    image: lossmon-client:${LOSSMON_VERSION}
+    platform: linux/amd64
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging: {driver: local, options: {max-size: "10m", max-file: "5"}}
+    environment:
+      LOSSMON_SERVER_URL: ${LOSSMON_SERVER_URL:?set LOSSMON_SERVER_URL in .env}
+      LOSSMON_TOKEN_FILE: /run/secrets/lossmon_token
+      LOSSMON_LOCATION: ${LOSSMON_LOCATION:?set LOSSMON_LOCATION in .env}
+      LOSSMON_PRESET: ${LOSSMON_PRESET:-logos.dev}
+      LOSSMON_MODE: ${LOSSMON_MODE:-core}
+      LOSSMON_ROLE: ${LOSSMON_ROLE:-both}
+      LOSSMON_RATE: ${LOSSMON_RATE:-0.5}
+    secrets:
+      - lossmon_token
+    volumes:
+      - data:/data
+
+secrets:
+  lossmon_token:
+    file: ./token
+
+volumes:
+  data:
