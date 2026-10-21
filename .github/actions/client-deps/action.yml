@@ -1,0 +1,27 @@
+name: client-deps
+description: Install Nimble and restore the cached client dependencies
+
+runs:
+  using: composite
+  steps:
+    - uses: nim-lang/setup-nimble-action@9b328822bb8acad01c5bcc1a0ffe3a0084013156 # v2.0.0
+      with:
+        nimble-version: "0.26.0"
+        parent-nimble-install-directory: ${{ runner.temp }}
+        nimble-install-directory: nimble
+        repo-token: ${{ github.token }}
+    - name: Use the installed Nimble
+      shell: bash
+      run: echo "NIMBLE_BIN=$RUNNER_TEMP/nimble/bin" >> "$GITHUB_ENV"
+    - id: deps-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          client/nimbledeps
+          client/nimble.paths
+          client/build/librln_*.a
+        key: client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('client/nimble.lock', 'client/lossmon_client.nimble', 'client/Makefile', 'client/scripts/*') }}
+    - name: Mark cached deps as built
+      if: steps.deps-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: touch client/nimbledeps/.nimble-setup

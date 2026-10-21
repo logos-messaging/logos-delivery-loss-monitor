@@ -5,11 +5,13 @@ on:
     paths:
       - "client/**"
       - ".github/workflows/client.yml"
+      - ".github/actions/client-deps/**"
   push:
     branches: [main]
     paths:
       - "client/**"
       - ".github/workflows/client.yml"
+      - ".github/actions/client-deps/**"
   workflow_dispatch:
     inputs:
       server_url:
@@ -35,25 +37,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: ./.github/actions/client-deps
       - name: Unit tests
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: client
-          target: test
-          cache-from: type=gha,scope=client
-          cache-to: type=gha,scope=client,mode=max
-      - name: Image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: client
-          target: prod
-          tags: lossmon-client:ci
-          load: true
-          cache-from: type=gha,scope=client
-          cache-to: type=gha,scope=client,mode=max
+        run: make -C client test
+      - name: Build
+        run: make -C client lossmon-client
       - name: Help text
-        run: docker run --rm lossmon-client:ci --help
+        run: client/build/lossmon-client --help
 
   smoke:
     if: github.event_name == 'workflow_dispatch'
@@ -63,16 +53,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-      - name: Image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: client
-          target: prod
-          tags: lossmon-client:smoke
-          load: true
-          cache-from: type=gha,scope=client
-          cache-to: type=gha,scope=client,mode=max
+      - uses: ./.github/actions/client-deps
+      - name: Build
+        run: make -C client lossmon-client
       - name: Live smoke run
         env:
           SMOKE_TOKEN: ${{ secrets.LOSSMON_SMOKE_TOKEN }}
@@ -84,9 +67,6 @@ jobs:
           printf '%s' "$SMOKE_TOKEN" > "$RUNNER_TEMP/token"
           chmod 600 "$RUNNER_TEMP/token"
           mkdir "$RUNNER_TEMP/data"
-          chmod 777 "$RUNNER_TEMP/data"
-          timeout --signal=TERM --preserve-status "$SECONDS_TO_RUN" docker run --rm --init --stop-timeout 20 \
-            --volume "$RUNNER_TEMP/token:/run/token:ro" --volume "$RUNNER_TEMP/data:/data" \
-            lossmon-client:smoke \
-            --server-url="$SERVER_URL" --token-file=/run/token --preset="$PRESET" \
+          timeout --signal=TERM --preserve-status "$SECONDS_TO_RUN" client/build/lossmon-client \
+            --server-url="$SERVER_URL" --token-file="$RUNNER_TEMP/token" --data-dir="$RUNNER_TEMP/data" --preset="$PRESET" \
             --location=eu --role=both --rate=0.2 --payload-bytes=256 || [ $? -eq 143 ]

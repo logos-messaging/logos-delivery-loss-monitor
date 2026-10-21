@@ -2,7 +2,7 @@ NIMBLE_VERSION := 0.26.0
 ZEROKIT_COMMIT := ea80f39be3e7944e4537b5f4726a7c4aabfe0ab5
 RLN_VERSION := v2.0.2
 
-NIMBLE_BIN := $(HOME)/.local/nimble-$(NIMBLE_VERSION)/bin
+NIMBLE_BIN ?= $(HOME)/.local/nimble-$(NIMBLE_VERSION)/bin
 export PATH := $(NIMBLE_BIN):$(PATH)
 unexport NIMBLE_DIR
 
