@@ -50,13 +50,15 @@ For a client that keeps running after the SSH session closes and comes back afte
 
 Needs Docker with Compose v2.
 
+**The token.** It is the server's `report` token, which the server admin creates with `./init-secrets.sh add-token <name> report` (see [Tokens](../deploy/README.md#tokens)) and sends to you privately; the server keeps only its hash, so it cannot be recovered later. You save it as the file `deploy/client/token`. Compose mounts that file into the container as the secret `/run/secrets/lossmon_token`, and the client reads it from there (`LOSSMON_TOKEN_FILE`, the same as `--token-file`). With plain `docker run` the file is mounted at `/run/token` instead. The token is never an environment variable or a command-line argument, so it does not show in `docker inspect` or `ps`.
+
 ```
 git clone https://github.com/logos-messaging/logos-delivery-loss-monitor
 cd logos-delivery-loss-monitor/deploy/client
 cp .env.example .env
 ```
 
-Edit `.env` and set `LOSSMON_VERSION`, `LOSSMON_SERVER_URL` and `LOSSMON_LOCATION`. Then enter the token, which is read without echo so it stays out of shell history, and start the client. `chmod 644` lets the container user (uid 10001) read the token.
+Edit `.env` and set `LOSSMON_VERSION`, `LOSSMON_SERVER_URL` and `LOSSMON_LOCATION`. Then write the token to `deploy/client/token`: the first command reads it without echo so it stays out of shell history. Then start the client. `chmod 644` lets the container user (uid 10001) read the token.
 
 ```
 printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; printf '%s\n' "$t" > token; unset t
