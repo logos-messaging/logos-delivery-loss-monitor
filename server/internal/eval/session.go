@@ -25,9 +25,12 @@ func gapRank(reason string) int {
 	return 0
 }
 
+// gap is a period the receiver's reports do not cover. An offline gap is a stretch with no
+// heartbeats: only publishes made during it are affected, unlike a lost-report gap.
 type gap struct {
 	from, to int64
 	reason   string
+	offline  bool
 }
 
 // stableFields are the registration fields compared for PUT idempotency.
@@ -135,16 +138,25 @@ func (s *session) correct(atMs int64) int64 { return atMs + s.offset }
 // addGap inserts a coverage gap, keeping the list sorted by start. When the list exceeds max,
 // the two oldest gaps merge, which only widens coverage loss.
 func (s *session) addGap(from, to int64, reason string, max int) {
-	if from > to {
-		from, to = to, from
+	s.insertGap(gap{from: from, to: to, reason: reason}, max)
+}
+
+// addOfflineGap is addGap for a stretch in which the receiver was not running.
+func (s *session) addOfflineGap(from, to int64, reason string, max int) {
+	s.insertGap(gap{from: from, to: to, reason: reason, offline: true}, max)
+}
+
+func (s *session) insertGap(g gap, max int) {
+	if g.from > g.to {
+		g.from, g.to = g.to, g.from
 	}
-	i := sort.Search(len(s.gaps), func(i int) bool { return s.gaps[i].from > from })
+	i := sort.Search(len(s.gaps), func(i int) bool { return s.gaps[i].from > g.from })
 	s.gaps = append(s.gaps, gap{})
 	copy(s.gaps[i+1:], s.gaps[i:])
-	s.gaps[i] = gap{from: from, to: to, reason: reason}
+	s.gaps[i] = g
 	for len(s.gaps) > max {
 		a, b := s.gaps[0], s.gaps[1]
-		merged := gap{from: a.from, to: a.to, reason: a.reason}
+		merged := gap{from: a.from, to: a.to, reason: a.reason, offline: a.offline && b.offline}
 		if b.to > merged.to {
 			merged.to = b.to
 		}
@@ -156,10 +168,15 @@ func (s *session) addGap(from, to int64, reason string, max int) {
 }
 
 // gapReason returns the strongest gap reason overlapping [lo, hi], or "" when covered.
-func (s *session) gapReason(lo, hi int64) string {
+// Offline gaps only count when they overlap [lo, offlineHi].
+func (s *session) gapReason(lo, hi, offlineHi int64) string {
 	best := ""
 	for _, g := range s.gaps {
-		if g.from <= hi && g.to >= lo && gapRank(g.reason) > gapRank(best) {
+		end := hi
+		if g.offline {
+			end = min(hi, offlineHi)
+		}
+		if g.from <= end && g.to >= lo && gapRank(g.reason) > gapRank(best) {
 			best = g.reason
 		}
 	}

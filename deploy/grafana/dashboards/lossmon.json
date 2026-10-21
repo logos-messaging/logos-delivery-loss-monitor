@@ -259,8 +259,8 @@
     {
       "id": 5,
       "type": "stat",
-      "title": "Pending publishes",
-      "description": "Publishes awaiting a decision.",
+      "title": "Publishes in flight (awaiting window)",
+      "description": "Publishes still waiting out WINDOW + GRACE before they are decided.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
