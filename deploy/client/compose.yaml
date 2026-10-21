@@ -5,8 +5,8 @@ services:
     build:
       context: .
       args:
-        LOSSMON_VERSION: ${LOSSMON_VERSION:?set LOSSMON_VERSION in .env}
-    image: lossmon-client:${LOSSMON_VERSION}
+        LOSSMON_VERSION: ${LOSSMON_VERSION:-}
+    image: lossmon-client
     platform: linux/amd64
     restart: unless-stopped
     read_only: true

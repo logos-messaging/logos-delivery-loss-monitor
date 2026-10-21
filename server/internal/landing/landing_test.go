@@ -168,7 +168,6 @@ func TestDockerTabIsDefault(t *testing.T) {
 	}
 	panel := body[strings.Index(body, `id="panel-docker"`):strings.Index(body, `id="panel-binary"`)]
 	for _, want := range []string{
-		"LOSSMON_VERSION=0.2.0",
 		"LOSSMON_SERVER_URL=https://lossmon.example.org",
 		"LOSSMON_LOCATION=eu",
 		"LOSSMON_PRESET=status.prod",
@@ -184,7 +183,7 @@ func TestDockerTabIsDefault(t *testing.T) {
 			t.Errorf("docker panel lacks %q", want)
 		}
 	}
-	for _, unwanted := range []string{"stty", "umask", ".env.new", "--force-recreate"} {
+	for _, unwanted := range []string{"LOSSMON_VERSION", "stty", "umask", ".env.new", "--force-recreate"} {
 		if strings.Contains(panel, unwanted) {
 			t.Errorf("docker panel contains %q", unwanted)
 		}

@@ -43,8 +43,7 @@ footer { margin-top: 3rem; font-size: 0.85em; color: #555; }
 cd logos-delivery-loss-monitor/deploy/client
 cp .env.example .env</code></pre>
 <p>Edit <code>.env</code> and set these lines. The token is from the admin.</p>
-<pre><code>LOSSMON_VERSION={{.Version}}
-LOSSMON_SERVER_URL={{or .PublicURL "https://<server>"}}
+<pre><code>LOSSMON_SERVER_URL={{or .PublicURL "https://<server>"}}
 LOSSMON_LOCATION={{or .Location "<location>"}}
 LOSSMON_TOKEN=&lt;token&gt;
 LOSSMON_PRESET={{.Preset}}
