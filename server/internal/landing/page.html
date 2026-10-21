@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>lossmon</title>
+<style>
+body { font: 16px/1.5 system-ui, sans-serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+pre { background: #f4f4f4; padding: 0.75rem 1rem; overflow-x: auto; border-radius: 4px; }
+code { font-family: ui-monospace, monospace; font-size: 0.9em; }
+h2 { margin-top: 2rem; }
+footer { margin-top: 3rem; font-size: 0.85em; color: #555; }
+</style>
+</head>
+<body>
+<h1>lossmon</h1>
+<p>This server measures message loss on the <code>{{.Preset}}</code> Logos Delivery network. Volunteers run <code>lossmon-client</code>, which publishes and receives probe messages and reports them here.</p>
+
+<h2>1. Install</h2>
+{{if .Release -}}
+<p>Linux amd64, macOS amd64 and arm64. Installs to <code>~/.local/bin</code> without sudo.</p>
+<pre><code>curl -fsSL https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/download/v{{.Version}}/install.sh | LOSSMON_VERSION={{.Version}} sh</code></pre>
+<p>To read the script before running it:</p>
+<pre><code>curl -fsSLO https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/download/v{{.Version}}/install.sh
+less install.sh
+LOSSMON_VERSION={{.Version}} sh install.sh</code></pre>
+<p>For a manual install with checksums, see the <a href="https://github.com/logos-messaging/logos-delivery-loss-monitor/blob/v{{.Version}}/client/README.md#install">client README</a>.</p>
+{{- else -}}
+<p>This server is not a release build, so there is no matching client binary to install. Ask the admin which version to use, or build from source as described in the <a href="https://github.com/logos-messaging/logos-delivery-loss-monitor/blob/main/client/README.md">client README</a>.</p>
+{{- end}}
+
+<h2>2. Token</h2>
+<p>Get the token from the admin. Then save it:</p>
+<pre><code>mkdir -p ~/.config/lossmon &amp;&amp; (umask 077; cat &gt; ~/.config/lossmon/token)</code></pre>
+<p>Paste the token, press Enter, then Ctrl-D.</p>
+
+<h2>3. Run</h2>
+{{if not .Location -}}
+<p>Replace <code>&lt;location&gt;</code> with one of:{{range .Locations}} <code>{{.}}</code>{{end}}.</p>
+{{end -}}
+<pre><code>"$HOME/.local/bin/lossmon-client" \
+  --server-url={{or .PublicURL "https://<server>"}} \
+  --token-file="$HOME/.config/lossmon/token" \
+  --data-dir="$HOME/.local/share/lossmon" \
+  --preset={{.Preset}} \
+{{if .AllowPreset}}  --allow-preset={{.Preset}} \
+{{end}}  --location={{or .Location "<location>"}}</code></pre>
+<p>Stop with Ctrl-C. Restarting is safe: the client ID is kept in the data directory.</p>
+
+<footer>
+<a href="https://github.com/logos-messaging/logos-delivery-loss-monitor">logos-delivery-loss-monitor</a>{{if .Release}} · lossmon-server {{.Version}}{{end}}
+</footer>
+</body>
+</html>

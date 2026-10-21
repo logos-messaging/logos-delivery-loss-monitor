@@ -14,6 +14,13 @@
 }
 
 {$LOSSMON_PUBLIC_HOST} {
+	@page {
+		path /
+		method GET HEAD
+	}
+	handle @page {
+		reverse_proxy server:8080
+	}
 	handle /v1/* {
 		request_body {
 			max_size 1MB

@@ -32,6 +32,10 @@ jobs:
           persist-credentials: false
       - name: Compose config
         run: docker compose --profile listener --profile public config -q
+      - name: Public URL from the public host
+        run: |
+          LOSSMON_PUBLIC_HOST=lossmon.example.org docker compose config --format json | jq -e '.services.server.environment.LOSSMON_PUBLIC_URL == "https://lossmon.example.org"'
+          env -u LOSSMON_PUBLIC_HOST docker compose config --format json | jq -e '(.services.server.environment.LOSSMON_PUBLIC_URL // "") == ""'
       - name: Required Grafana password
         run: |
           if env -u GRAFANA_ADMIN_PASSWORD docker compose config -q 2>/dev/null; then
@@ -56,4 +60,6 @@ jobs:
           image=$(docker compose --profile public config --format json | jq -r .services.caddy.image)
           docker run --rm -e LOSSMON_PUBLIC_HOST=lossmon.example.org -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" "$image" caddy validate --config /etc/caddy/Caddyfile
       - name: Server image
-        run: docker build ../server
+        run: |
+          docker build --build-arg VERSION=0.0.0-ci -t lossmon-server:ci ../server
+          test "$(docker run --rm lossmon-server:ci --version)" = "lossmon-server 0.0.0-ci"

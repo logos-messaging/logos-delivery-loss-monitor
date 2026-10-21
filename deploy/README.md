@@ -26,14 +26,31 @@ The client image builds for linux/amd64 only.
 
 ### Host already runs a web server
 
-Leave the `public` profile off. On the existing proxy, add a virtual host for the public name that forwards `/v1/*` only to `127.0.0.1:${LOSSMON_SERVER_PORT}`, answers 404 for everything else, limits request bodies to 1 MiB and does not log client addresses. Do not publish port 8080 beyond loopback and do not use `--insecure-http`: both put bearer tokens on the wire in clear.
+Leave the `public` profile off. On the existing proxy, add a virtual host for the public name that forwards `/v1/*` and exactly `GET`/`HEAD /` (the landing page) to `127.0.0.1:${LOSSMON_SERVER_PORT}`, answers 404 for everything else, limits request bodies to 1 MiB and does not log client addresses. Set `LOSSMON_PUBLIC_HOST` in `.env` too: the server builds the landing page URL from it. Do not publish port 8080 beyond loopback and do not use `--insecure-http`: both put bearer tokens on the wire in clear.
 
 ## Profiles
 
 | Profile | Adds |
 |---|---|
 | `listener` | `lossmon-client` in core mode, receive only, registered with the `listener` token |
-| `public` | Caddy on 80/443 with ACME for `LOSSMON_PUBLIC_HOST` (a hostname, no scheme or port), proxying `/v1/*` only, no access log and no error log lines for failed proxying |
+| `public` | Caddy on 80/443 with ACME for `LOSSMON_PUBLIC_HOST` (a hostname, no scheme or port), proxying `/v1/*` and `GET`/`HEAD /` (the landing page) only, no access log and no error log lines for failed proxying |
+
+## Landing page
+
+The server answers `GET /` with a static page that tells volunteers how to install and run `lossmon-client` against this server. It needs no JavaScript and makes no third-party requests. The page is rendered once at startup from the server's own config:
+
+- `LOSSMON_PUBLIC_URL` is the URL shown in the run command. Compose derives it from `LOSSMON_PUBLIC_HOST` (`https://<host>`); with no host it stays empty and the page shows `https://<server>`. Outside compose it must be `https://host[:port]` with no path, query or credentials, and a plain ASCII hostname (IDNs in punycode).
+- `LOSSMON_LOCATIONS` entries and the preset may only use `a-z`, `0-9`, `.`, `_` and `-`, and must start with a letter or digit. The server refuses to start otherwise.
+- The install line is pinned to the server's own version. The image gets it from `LOSSMON_SERVER_VERSION`; when that is empty or not a release (`dev`), the page says the server is not a release build and shows no install line.
+
+Release flow, once the GitHub release for the tag is published (its draft links return 404 until then):
+
+```
+git fetch --tags && git checkout v0.2.0
+# deploy/.env: LOSSMON_SERVER_VERSION=0.2.0
+docker compose --profile public up -d --build
+docker compose exec server lossmon-server --version   # lossmon-server 0.2.0
+```
 
 ## Tokens
 

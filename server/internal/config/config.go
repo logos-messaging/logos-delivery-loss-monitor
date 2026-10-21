@@ -6,7 +6,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +29,9 @@ type Config struct {
 	Topics    []string
 	Locations []string
 	Ephemeral bool
+
+	// PublicURL is the normalized https://host[:port] clients reach the server at; empty when unset.
+	PublicURL string
 
 	MaxRatePerClient  float64
 	MaxPayloadBytes   int
@@ -62,6 +67,12 @@ const (
 	PresetLogosDev  = "logos.dev"
 	PresetLogosTest = "logos.test"
 	presetTWN       = "twn"
+)
+
+var (
+	locationRe = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,31}$`)
+	presetRe   = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
+	hostRe     = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$`)
 )
 
 var knownClusters = map[string]int{PresetLogosDev: 3, PresetLogosTest: 2}
@@ -145,6 +156,14 @@ func Load(getenv func(string) string) (*Config, error) {
 	}
 
 	c.Preset = CanonicalPreset(preset)
+	if !presetRe.MatchString(c.Preset) {
+		return nil, fmt.Errorf("invalid preset %q", c.Preset)
+	}
+	publicURL, err := parsePublicURL(l.str("PUBLIC_URL", ""))
+	if err != nil {
+		return nil, err
+	}
+	c.PublicURL = publicURL
 	known, isKnown := knownClusters[c.Preset]
 	switch {
 	case c.Preset == presetTWN:
@@ -194,8 +213,8 @@ func (c *Config) validate() error {
 		seen[t] = true
 	}
 	for _, loc := range c.Locations {
-		if loc == "" || len(loc) > 32 || loc != strings.ToLower(loc) || strings.ContainsAny(loc, " \t\r\n") {
-			return fmt.Errorf("invalid location %q: use short lowercase labels", loc)
+		if !locationRe.MatchString(loc) {
+			return fmt.Errorf("invalid location %q: use short lowercase labels of a-z, 0-9, '.', '_' and '-'", loc)
 		}
 	}
 	if c.HeartbeatInterval < time.Second || c.HeartbeatInterval > time.Minute {
@@ -240,6 +259,34 @@ func (c *Config) validate() error {
 		return errors.New("LOSSMON_MAX_GAPS_PER_SESSION must be at least 2")
 	}
 	return nil
+}
+
+var errPublicURL = errors.New("LOSSMON_PUBLIC_URL must be https://host[:port] with no path, query or credentials")
+
+// parsePublicURL validates raw and returns it as https://<lowercase host>[:port], or "" when raw is empty.
+func parsePublicURL(raw string) (string, error) {
+	if raw == "" {
+		return "", nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Opaque != "" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" {
+		return "", errPublicURL
+	}
+	if u.Path != "" && u.Path != "/" {
+		return "", errPublicURL
+	}
+	host := strings.ToLower(u.Hostname())
+	if len(host) > 253 || !hostRe.MatchString(host) {
+		return "", errPublicURL
+	}
+	if port := u.Port(); port != "" {
+		n, err := strconv.Atoi(port)
+		if err != nil || n < 1 || n > 65535 || strings.Trim(port, "0123456789") != "" {
+			return "", errPublicURL
+		}
+		host += ":" + strconv.Itoa(n)
+	}
+	return "https://" + host, nil
 }
 
 // ProbeKey is the run-wide probe authentication key served to clients.

@@ -11,6 +11,8 @@ services:
     <<: *hardened
     build:
       context: ../server
+      args:
+        VERSION: ${LOSSMON_SERVER_VERSION:-dev}
     image: lossmon-server:local
     read_only: true
     ports:
@@ -18,6 +20,7 @@ services:
     environment:
       LOSSMON_TOKENS_FILE: /run/lossmon/tokens
       LOSSMON_PROBE_KEY_FILE: /run/lossmon/probe_key
+      LOSSMON_PUBLIC_URL: ${LOSSMON_PUBLIC_HOST:+https://${LOSSMON_PUBLIC_HOST}}
       LOSSMON_PRESET: ${LOSSMON_PRESET:-logos.dev}
       LOSSMON_CLUSTER_ID: ${LOSSMON_CLUSTER_ID:-}
       LOSSMON_ALLOW_PRESET: ${LOSSMON_ALLOW_PRESET:-}
