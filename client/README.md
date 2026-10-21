@@ -58,7 +58,7 @@ cd logos-delivery-loss-monitor/deploy/client
 cp .env.example .env
 ```
 
-Replace `<version>` with the release tag you are installing (for example `v0.2.0`). Edit `.env` and set `LOSSMON_VERSION`, `LOSSMON_SERVER_URL` and `LOSSMON_LOCATION`; for a preset other than `logos.dev` and `logos.test`, also set `LOSSMON_ALLOW_PRESET` to that preset. Then write the token to `deploy/client/token`: the first command reads it without echo so it stays out of shell history. Then start the client. `chmod 644` lets the container user (uid 10001) read the token.
+Replace `<version>` with the release tag you are installing; it must be a release that includes `deploy/client` (v0.3.0 or later). Edit `.env` and set `LOSSMON_VERSION`, `LOSSMON_SERVER_URL` and `LOSSMON_LOCATION`; for a preset other than `logos.dev` and `logos.test`, also set `LOSSMON_ALLOW_PRESET` to that preset. Then write the token to `deploy/client/token`: the first command reads it without echo so it stays out of shell history. Then start the client. `chmod 644` lets the container user (uid 10001) read the token.
 
 ```
 printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; printf '%s\n' "$t" > token; unset t
@@ -75,7 +75,7 @@ docker compose up -d --build
 | Stop, keep state | `docker compose stop` |
 | Start again | `docker compose start` |
 | Stop and remove the container | `docker compose down` |
-| Upgrade | set the new `LOSSMON_VERSION` in `.env`, then `docker compose up -d --build` |
+| Upgrade | `git fetch --depth 1 origin tag v<new> && git checkout v<new>`, set the new `LOSSMON_VERSION` in `.env`, then `docker compose up -d --build` |
 | Check the version | `docker compose run --rm client --version` |
 
 Settings come from `.env`: `LOSSMON_SERVER_URL`, `LOSSMON_LOCATION`, `LOSSMON_PRESET`, `LOSSMON_MODE`, `LOSSMON_ROLE` and `LOSSMON_RATE`. Any other option in [Run](#run) is passed the same way, as `LOSSMON_<NAME>` under `environment:` in `compose.yaml`. Changing `.env` takes effect with `docker compose up -d`.
