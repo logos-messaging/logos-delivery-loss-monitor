@@ -5,9 +5,11 @@ ARG LOG_LEVEL=NOTICE
 RUN apk add --no-cache bash git build-base cmake curl linux-headers openssl-dev libbsd-dev openssl rust cargo
 
 WORKDIR /app
-COPY . .
-
+COPY Makefile lossmon_client.nimble nimble.lock ./
+COPY scripts scripts
 RUN make deps
+
+COPY . .
 
 FROM build AS test
 RUN make test LOG_LEVEL="${LOG_LEVEL}"
