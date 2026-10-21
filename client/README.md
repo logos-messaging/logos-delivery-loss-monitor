@@ -2,6 +2,48 @@
 
 Publishes probe messages on a Logos Delivery network and reports what it published and received to the lossmon server. It uses the Messaging API only (`EntryLayer.messaging`).
 
+## Install
+
+Linux amd64, macOS amd64 and arm64. Installs to `~/.local/bin` without sudo; set `LOSSMON_VERSION` or `LOSSMON_INSTALL_DIR` to change the version or directory.
+
+```
+curl --proto '=https' --tlsv1.2 -fsSL https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh | sh
+```
+
+With a pinned version, set the variables on `sh`:
+
+```
+curl --proto '=https' --tlsv1.2 -fsSL https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh | LOSSMON_VERSION=0.1.0 sh
+```
+
+To read the script before running it:
+
+```
+curl --proto '=https' --tlsv1.2 -fsSLO https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh
+less install.sh
+sh install.sh
+```
+
+Manually, with the checksum verified (macOS: `OS=darwin`, `ARCH=arm64` or `amd64`, and `shasum -a 256` instead of `sha256sum`):
+
+```
+V=0.1.0; OS=linux; ARCH=amd64
+f=lossmon-client_${V}_${OS}_${ARCH}.tar.gz
+base=https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/download/v$V
+curl --proto '=https' --tlsv1.2 -fL -O "$base/$f" -O "$base/SHA256SUMS"
+sha256sum -c SHA256SUMS --ignore-missing
+tar -xzf "$f" && mkdir -p ~/.local/bin && install -m 755 "${f%.tar.gz}/lossmon-client" ~/.local/bin/
+lossmon-client --version
+```
+
+The client writes to `/data` by default, which a normal user cannot create. Pass a per-user directory:
+
+```
+lossmon-client --data-dir="$HOME/.local/share/lossmon" --server-url=... --token-file=... --location=...
+```
+
+A binary downloaded in a browser is quarantined by macOS; clear it with `xattr -d com.apple.quarantine lossmon-client`. Downloads through `curl` are not affected.
+
 ## Build
 
 Logos Delivery `v0.39.2` is a Nimble dependency (`lossmon_client.nimble`), locked in `nimble.lock` to the dependency set that release was tested with. There are no submodules.

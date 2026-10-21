@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/release.yml"
       - ".github/scripts/package.sh"
+      - "install.sh"
       - "client/Dockerfile"
       - "client/Makefile"
   workflow_dispatch:
@@ -36,7 +37,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.9"
+          go-version: "1.26.10"
           cache: false
       - name: Version
         id: version
@@ -90,7 +91,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.9"
+          go-version: "1.26.10"
           cache: false
       - name: Build
         working-directory: server
@@ -204,9 +205,45 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  install:
+    needs: [verify, package]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, macos-14, macos-15-intel]
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-assets
+          path: ${{ runner.temp }}/dist
+      - name: Install
+        env:
+          LOSSMON_VERSION: ${{ needs.verify.outputs.version }}
+          LOSSMON_BASE_URL: file://${{ runner.temp }}/dist
+          LOSSMON_INSTALL_DIR: ${{ runner.temp }}/bin
+        run: |
+          set -eu
+          sh "$RUNNER_TEMP/dist/install.sh"
+          test "$("$LOSSMON_INSTALL_DIR/lossmon-client" --version | head -n 1)" = "lossmon-client $LOSSMON_VERSION"
+      - name: Rejects a bad checksum
+        env:
+          LOSSMON_VERSION: ${{ needs.verify.outputs.version }}
+          LOSSMON_BASE_URL: file://${{ runner.temp }}/bad
+          LOSSMON_INSTALL_DIR: ${{ runner.temp }}/bad-bin
+        run: |
+          set -eu
+          cp -R "$RUNNER_TEMP/dist" "$RUNNER_TEMP/bad"
+          zeros=$(printf '%064d' 0)
+          sed "s/^[0-9a-f]\{64\}/$zeros/" "$RUNNER_TEMP/dist/SHA256SUMS" > "$RUNNER_TEMP/bad/SHA256SUMS"
+          if sh "$RUNNER_TEMP/dist/install.sh" 2> "$RUNNER_TEMP/bad.err"; then echo "installed despite bad checksum" >&2; exit 1; fi
+          grep -q 'checksum mismatch' "$RUNNER_TEMP/bad.err" || { cat "$RUNNER_TEMP/bad.err" >&2; exit 1; }
+          test ! -e "$LOSSMON_INSTALL_DIR/lossmon-client"
+
   publish:
     if: github.event_name == 'push' && github.ref_type == 'tag'
-    needs: package
+    needs: [package, install]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
