@@ -54,7 +54,7 @@ LOSSMON_PRESET={{.Preset}}
 docker compose logs -f client</code></pre>
 <p>Ctrl-C stops following the logs, not the client. To change a setting, edit <code>.env</code> and run <code>docker compose up -d</code>. To change the token, run <code>docker compose down -v</code> first, because the client ID is bound to its token. More commands are in the <a href="https://github.com/logos-messaging/logos-delivery-loss-monitor/blob/v{{.Version}}/client/README.md#run-detached-with-docker">client README</a>.</p>
 {{- else -}}
-<p>This server is not a release build, so there is no matching client version to pin. Ask the admin which version to use, then follow the Docker steps in the <a href="https://github.com/logos-messaging/logos-delivery-loss-monitor/blob/main/client/README.md#run-detached-with-docker">client README</a>.</p>
+<p>This server is not a release build. Follow the Docker steps in the <a href="https://github.com/logos-messaging/logos-delivery-loss-monitor/blob/main/client/README.md#run-detached-with-docker">client README</a>.</p>
 {{- end}}
 </div>
 
