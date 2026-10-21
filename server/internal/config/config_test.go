@@ -123,3 +123,56 @@ func TestStatsRetention(t *testing.T) {
 		}
 	}
 }
+
+func TestPublicURL(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"", ""},
+		{"https://lossmon.mywire.org", "https://lossmon.mywire.org"},
+		{"https://Lossmon.MyWire.org/", "https://lossmon.mywire.org"},
+		{"https://h.example:8443", "https://h.example:8443"},
+	}
+	for _, tc := range cases {
+		c, err := Load(env("PUBLIC_URL", tc.in))
+		if err != nil {
+			t.Fatalf("%q: %v", tc.in, err)
+		}
+		if c.PublicURL != tc.want {
+			t.Fatalf("%q: PublicURL = %q, want %q", tc.in, c.PublicURL, tc.want)
+		}
+	}
+	for _, in := range []string{
+		"http://h", "h", "https://u:p@h", "https://h/x", "https://h?q", "https://h#f", "https://[::1]",
+		"https://h_x", "https://h:0", "https://h:70000", "https://h$(id)",
+	} {
+		if _, err := Load(env("PUBLIC_URL", in)); err == nil || !strings.Contains(err.Error(), "LOSSMON_PUBLIC_URL") {
+			t.Fatalf("%q: err = %v, want a LOSSMON_PUBLIC_URL error", in, err)
+		}
+	}
+}
+
+func TestLocationCharset(t *testing.T) {
+	for _, loc := range []string{"eu;x", "<b>", "$x", "`id`", "-eu", ".eu", "_eu", "EU"} {
+		if _, err := Load(env("LOCATIONS", loc)); err == nil {
+			t.Fatalf("location %q accepted", loc)
+		}
+	}
+	c, err := Load(env("LOCATIONS", "eu-west,us.east,ap_1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Locations) != 3 {
+		t.Fatalf("locations = %v", c.Locations)
+	}
+}
+
+func TestPresetCharset(t *testing.T) {
+	for _, p := range []string{"x;y", "-x", "x y", "x$"} {
+		kv := []string{"PRESET", p, "CLUSTER_ID", "16", "ALLOW_PRESET", p}
+		if _, err := Load(env(kv...)); err == nil {
+			t.Fatalf("preset %q accepted", p)
+		}
+	}
+}

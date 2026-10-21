@@ -4,7 +4,9 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/lossmon-server ./cmd/lossmon-server
+ARG VERSION=dev
+RUN case "$VERSION" in ""|*[!0-9A-Za-z.+-]*) echo "invalid VERSION: $VERSION" >&2; exit 1 ;; esac
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/lossmon-server ./cmd/lossmon-server
 
 FROM alpine:3.22@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8
 
