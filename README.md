@@ -22,19 +22,19 @@ Grafana is on `http://127.0.0.1:3000`; see [`deploy/README.md`](deploy/README.md
 Linux amd64, macOS amd64 and arm64. Installs to `~/.local/bin` without sudo; set `LOSSMON_VERSION` or `LOSSMON_INSTALL_DIR` to change the version or directory.
 
 ```
-curl -fsSL https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh | sh
+curl --proto '=https' --tlsv1.2 -fsSL https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh | sh
 ```
 
 With a pinned version, set the variables on `sh`:
 
 ```
-curl -fsSL https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh | LOSSMON_VERSION=0.1.0 sh
+curl --proto '=https' --tlsv1.2 -fsSL https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh | LOSSMON_VERSION=0.1.0 sh
 ```
 
 To read the script before running it:
 
 ```
-curl -fsSLO https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh
+curl --proto '=https' --tlsv1.2 -fsSLO https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh
 less install.sh
 sh install.sh
 ```
@@ -45,7 +45,7 @@ Manually, with the checksum verified (macOS: `OS=darwin`, `ARCH=arm64` or `amd64
 V=0.1.0; OS=linux; ARCH=amd64
 f=lossmon-client_${V}_${OS}_${ARCH}.tar.gz
 base=https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/download/v$V
-curl -fL -O "$base/$f" -O "$base/SHA256SUMS"
+curl --proto '=https' --tlsv1.2 -fL -O "$base/$f" -O "$base/SHA256SUMS"
 sha256sum -c SHA256SUMS --ignore-missing
 tar -xzf "$f" && mkdir -p ~/.local/bin && install -m 755 "${f%.tar.gz}/lossmon-client" ~/.local/bin/
 lossmon-client --version
