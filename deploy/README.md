@@ -26,14 +26,14 @@ The client image builds for linux/amd64 only.
 
 ### Host already runs a web server
 
-Leave the `public` profile off. On the existing proxy, add a virtual host for the public name that forwards `/v1/*` and exactly `GET`/`HEAD /` (the landing page) to `127.0.0.1:${LOSSMON_SERVER_PORT}`, answers 404 for everything else, limits request bodies to 1 MiB and does not log client addresses. Set `LOSSMON_PUBLIC_HOST` in `.env` too: the server builds the landing page URL from it. Do not publish port 8080 beyond loopback and do not use `--insecure-http`: both put bearer tokens on the wire in clear.
+Leave the `public` profile off. On the existing proxy, add a virtual host for the public name that forwards `/v1/*` and exactly `GET`/`HEAD /` (the landing page) to `127.0.0.1:${LOSSMON_SERVER_PORT}`, answers 404 for everything else, limits request bodies to 1 MiB and does not log client addresses. Set `LOSSMON_PUBLIC_HOST` in `.env` too (e.g. `lossmon.example.org`): the server builds the landing page URL from it. Do not publish port 8080 beyond loopback and do not use `--insecure-http`: both put bearer tokens on the wire in clear.
 
 ## Profiles
 
 | Profile | Adds |
 |---|---|
 | `listener` | `lossmon-client` in core mode, receive only, registered with the `listener` token |
-| `public` | Caddy on 80/443 with ACME for `LOSSMON_PUBLIC_HOST` (a hostname, no scheme or port), proxying `/v1/*` and `GET`/`HEAD /` (the landing page) only, no access log and no error log lines for failed proxying |
+| `public` | Caddy on 80/443 with ACME for `LOSSMON_PUBLIC_HOST` (required; a hostname, no scheme or port), proxying `/v1/*` and `GET`/`HEAD /` (the landing page) only, no access log and no error log lines for failed proxying |
 
 ## Landing page
 

@@ -1,19 +1,59 @@
 package landing
 
 import (
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/api"
+	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/auth"
 	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/config"
+	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/eval"
+	"github.com/logos-messaging/logos-delivery-loss-monitor/server/internal/metrics"
 )
+
+const (
+	tokenName = "operator-secret-name"
+	tokenText = "operator-token-0123456789-abcdefghij"
+	probeHex  = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+)
+
+// stack holds a config loaded from real token and probe key files.
+type stack struct {
+	cfg        *config.Config
+	tokensFile string
+	keyFile    string
+}
+
+func newStack(t *testing.T, kv ...string) stack {
+	t.Helper()
+	dir := t.TempDir()
+	st := stack{tokensFile: filepath.Join(dir, "tokens"), keyFile: filepath.Join(dir, "probe_key")}
+	if err := os.WriteFile(st.tokensFile, []byte(tokenName+" report "+tokenText+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(st.keyFile, []byte(probeHex), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	st.cfg = loadConfig(t, st.tokensFile, st.keyFile, kv...)
+	return st
+}
 
 func testConfig(t *testing.T, kv ...string) *config.Config {
 	t.Helper()
+	return loadConfig(t, "/run/lossmon/tokens", "/run/lossmon/probe_key", kv...)
+}
+
+func loadConfig(t *testing.T, tokensFile, keyFile string, kv ...string) *config.Config {
+	t.Helper()
 	m := map[string]string{
-		"LOSSMON_TOKENS_FILE":    "/run/lossmon/tokens",
-		"LOSSMON_PROBE_KEY_FILE": "/run/lossmon/probe_key",
+		"LOSSMON_TOKENS_FILE":    tokensFile,
+		"LOSSMON_PROBE_KEY_FILE": keyFile,
 		"LOSSMON_PUBLIC_URL":     "https://lossmon.example.org",
 	}
 	for i := 0; i+1 < len(kv); i += 2 {
@@ -64,9 +104,17 @@ func TestCustomPresetAddsAllowPreset(t *testing.T) {
 }
 
 func TestNoSecretsOnPage(t *testing.T) {
-	body := render(t, "0.2.0")
-	for _, s := range []string{"0x", "probe_key", "tokens", "/run/lossmon", "Bearer"} {
-		if strings.Contains(body, s) {
+	st := newStack(t)
+	key, err := config.LoadProbeKey(st.keyFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := Render(st.cfg, "0.2.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range []string{probeHex, key.Hex(), key.ID, tokenName, tokenText, st.tokensFile, st.keyFile, "Bearer"} {
+		if strings.Contains(string(body), s) {
 			t.Errorf("body contains %q", s)
 		}
 	}
@@ -202,5 +250,47 @@ func TestMountRouting(t *testing.T) {
 		if rec.Code != http.StatusTeapot || rec.Header().Get("X-Next") != "1" {
 			t.Errorf("%s %s: status %d, did not reach next", tc.method, tc.path, rec.Code)
 		}
+	}
+}
+
+func TestMountOverRealAPI(t *testing.T) {
+	st := newStack(t)
+	key, err := config.LoadProbeKey(st.keyFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tokens := &auth.Store{}
+	if err := tokens.Load(st.tokensFile); err != nil {
+		t.Fatal(err)
+	}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	m := metrics.New(st.cfg.Topics, st.cfg.Locations, st.cfg.LossRatioWindow)
+	engine := eval.NewEngine(eval.NewCore(st.cfg, m, log, key.ID, 0), eval.SystemClock{}, log)
+	srv := api.New(st.cfg, tokens, engine, m, key, eval.SystemClock{}.NowMs, log)
+	page, err := Render(st.cfg, "0.2.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := Mount(srv.Handler(), page)
+
+	do := func(method, path string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(method, path, nil))
+		return rec
+	}
+	for _, tc := range []struct{ method, path string }{
+		{http.MethodGet, "/foo"}, {http.MethodGet, "/v1/unknown"}, {http.MethodPost, "/"},
+	} {
+		rec := do(tc.method, tc.path)
+		if rec.Code != http.StatusNotFound || rec.Header().Get("Content-Type") != "application/json" {
+			t.Errorf("%s %s: status %d, content type %q", tc.method, tc.path, rec.Code, rec.Header().Get("Content-Type"))
+		}
+		if got := strings.TrimSpace(rec.Body.String()); !strings.HasPrefix(got, `{"error":"not_found"`) {
+			t.Errorf("%s %s: body %q", tc.method, tc.path, got)
+		}
+	}
+	rec := do(http.MethodGet, "/")
+	if rec.Code != http.StatusOK || rec.Body.String() != string(page) {
+		t.Errorf("GET /: status %d, page mismatch", rec.Code)
 	}
 }
