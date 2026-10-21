@@ -172,7 +172,8 @@ func TestDockerTabIsDefault(t *testing.T) {
 		"LOSSMON_SERVER_URL=https://lossmon.example.org",
 		"LOSSMON_LOCATION=eu",
 		"LOSSMON_PRESET=status.prod",
-		"LOSSMON_ALLOW_PRESET: status.prod",
+		"LOSSMON_ALLOW_PRESET=status.prod",
+		"git clone --depth 1 --branch v0.2.0 ",
 		"deploy/client",
 		"&gt; token",
 		"docker compose up -d --build",
@@ -182,8 +183,25 @@ func TestDockerTabIsDefault(t *testing.T) {
 			t.Errorf("docker panel lacks %q", want)
 		}
 	}
+	if strings.Contains(panel, "compose.yaml") {
+		t.Error("docker panel asks to edit compose.yaml")
+	}
 	if !strings.Contains(body[strings.Index(body, `id="panel-binary"`):], "lossmon-client") {
 		t.Error("binary panel lacks the client run command")
+	}
+}
+
+func TestDockerTabDefaultPresetHasNoAllowPreset(t *testing.T) {
+	body := render(t, "0.2.0")
+	panel := body[strings.Index(body, `id="panel-docker"`):strings.Index(body, `id="panel-binary"`)]
+	if strings.Contains(panel, "ALLOW_PRESET") {
+		t.Errorf("default preset docker panel mentions ALLOW_PRESET:\n%s", panel)
+	}
+}
+
+func TestPanelsDoNotWidenPage(t *testing.T) {
+	if !strings.Contains(render(t, "0.2.0"), ".tabs > .panel { display: none; flex-basis: 100%; min-width: 0; }") {
+		t.Error("panel rule lacks min-width: 0")
 	}
 }
 

@@ -21,7 +21,7 @@ footer { margin-top: 3rem; font-size: 0.85em; color: #555; }
 .tabs > label { padding: 0.4rem 1.2rem; cursor: pointer; border: 1px solid transparent; border-bottom: 0; border-radius: 4px 4px 0 0; color: #555; }
 .tabs > input:checked + label { border-color: #ccc; background: #fff; color: #1a1a1a; font-weight: 600; margin-bottom: -1px; }
 .tabs > input:focus-visible + label { outline: 2px solid #1a1a1a; }
-.tabs > .panel { display: none; flex-basis: 100%; }
+.tabs > .panel { display: none; flex-basis: 100%; min-width: 0; }
 #tab-docker:checked ~ #panel-docker, #tab-binary:checked ~ #panel-binary { display: block; }
 </style>
 </head>
@@ -40,17 +40,15 @@ footer { margin-top: 3rem; font-size: 0.85em; color: #555; }
 {{if .Release -}}
 <h2>1. Configure</h2>
 {{template "location" . -}}
-<pre><code>git clone --depth 1 https://github.com/logos-messaging/logos-delivery-loss-monitor
+<pre><code>git clone --depth 1 --branch v{{.Version}} https://github.com/logos-messaging/logos-delivery-loss-monitor
 cd logos-delivery-loss-monitor/deploy/client
 cat &gt; .env &lt;&lt;'EOF'
 LOSSMON_VERSION={{.Version}}
 LOSSMON_SERVER_URL={{or .PublicURL "https://<server>"}}
 LOSSMON_LOCATION={{or .Location "<location>"}}
 LOSSMON_PRESET={{.Preset}}
-EOF</code></pre>
-{{if .AllowPreset -}}
-<p>This preset needs an allowlist entry: add <code>LOSSMON_ALLOW_PRESET: {{.Preset}}</code> under <code>environment:</code> in <code>compose.yaml</code>.</p>
-{{end -}}
+{{if .AllowPreset}}LOSSMON_ALLOW_PRESET={{.Preset}}
+{{end}}EOF</code></pre>
 
 <h2>2. Token</h2>
 <p>Get the token from the admin. Save it as the file <code>token</code> in this directory. It is read without echo, so it stays out of shell history:</p>
