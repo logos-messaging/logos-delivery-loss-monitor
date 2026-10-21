@@ -88,6 +88,15 @@ func (c *Core) addGap(s *session, from, to int64, reason string, bc *batchCtx) {
 	}
 }
 
+// addOfflineGap records a heartbeat gap: the receiver was not running between from and to.
+func (c *Core) addOfflineGap(s *session, from, to int64, reason string, bc *batchCtx) {
+	s.addOfflineGap(from, to+c.pad, reason, c.cfg.MaxGapsPerSession)
+	c.m.CoverageGap(reason)
+	if bc != nil {
+		bc.gaps[reason]++
+	}
+}
+
 // addLooseGap is addGap for drops whose probe is unknown. It also covers publishes reported up to W later.
 func (c *Core) addLooseGap(s *session, from, to int64, reason string, bc *batchCtx) {
 	s.addGap(from, to+c.pad+c.w, reason, c.cfg.MaxGapsPerSession)

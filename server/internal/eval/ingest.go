@@ -247,7 +247,7 @@ func (c *Core) applyHeartbeat(s *session, r *Record, corr int64, bc *batchCtx) {
 		}
 	}
 	if s.lastHB != 0 && corr-s.lastHB > 3*c.cfg.HeartbeatInterval.Milliseconds() {
-		c.addGap(s, s.lastHB, corr, metrics.ReasonReceiverGap, bc)
+		c.addOfflineGap(s, s.lastHB, corr, metrics.ReasonReceiverGap, bc)
 	}
 	s.lastHB = corr
 	c.m.ClientDropped(s.mode, s.loc, delta(r.DroppedTotal, &s.lastDropped))

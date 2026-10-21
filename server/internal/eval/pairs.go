@@ -286,9 +286,9 @@ func (c *Core) evalPair(p *publish, r *session, now int64) outcome {
 }
 
 // blindReason is the strongest reason the receiver may have missed p's receipts: a gap overlapping the
-// window, or a receipt for this probe that the server dropped.
+// window (an offline gap, only the first GRACE of it), or a receipt for this probe that the server dropped.
 func (c *Core) blindReason(p *publish, r *session, end int64) string {
-	reason := r.gapReason(p.tP, end)
+	reason := r.gapReason(p.tP, end, p.tP+c.g)
 	if b := c.blind.reason(p.probeID, r.uid); gapRank(b) > gapRank(reason) {
 		return b
 	}
