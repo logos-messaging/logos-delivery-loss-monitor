@@ -1,5 +1,5 @@
 #!/bin/sh
-# Packs raw binaries into release archives and writes SHA256SUMS.
+# Packs raw binaries into release archives, writes SHA256SUMS and copies install.sh.
 # Usage: package.sh <version> <binaries-dir> <out-dir>
 # Binaries are expected at <binaries-dir>/<component>-<os>-<arch>/<binary>.
 set -eu
@@ -32,5 +32,7 @@ for dir in "$bins"/*/; do
   tar --sort=name --owner=0 --group=0 --numeric-owner --mtime='1970-01-01 00:00:00Z' \
     -C "$work" -cf - "$base" | gzip -n -9 > "$out/$base.tar.gz"
 done
+
+install -m 755 install.sh "$out/install.sh"
 
 (cd "$out" && sha256sum -- *.tar.gz > SHA256SUMS)
