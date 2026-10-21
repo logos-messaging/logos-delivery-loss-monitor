@@ -176,14 +176,19 @@ func TestDockerTabIsDefault(t *testing.T) {
 		"git clone --depth 1 --branch v0.2.0 ",
 		"deploy/client",
 		"LOSSMON_TOKEN='%s'",
+		"rm -f .env.new",
 		"&gt; .env.new",
-		"mv .env.new .env",
+		"mv .env.new .env ;; esac; unset t",
+		"docker compose up -d --force-recreate",
 		"docker compose up -d --build",
 		"docker compose logs -f client",
 	} {
 		if !strings.Contains(panel, want) {
 			t.Errorf("docker panel lacks %q", want)
 		}
+	}
+	if strings.Contains(panel, "read -r t; stty echo; echo\n") {
+		t.Error("token read and write are on separate lines")
 	}
 	if strings.Contains(panel, "compose.yaml") {
 		t.Error("docker panel asks to edit compose.yaml")

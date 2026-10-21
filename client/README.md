@@ -55,15 +55,16 @@ Needs Docker with Compose v2.6.0 or later (`docker compose version`).
 ```
 git clone --depth 1 --branch v<version> https://github.com/logos-messaging/logos-delivery-loss-monitor
 cd logos-delivery-loss-monitor/deploy/client
-cp .env.example .env
+(umask 077; cp .env.example .env)
 ```
 
-Replace `<version>` with the release tag you are installing; it must be a release that includes `deploy/client` (v0.3.0 or later). Edit `.env` and set `LOSSMON_VERSION`, `LOSSMON_SERVER_URL` and `LOSSMON_LOCATION`; for a preset other than `logos.dev` and `logos.test`, also set `LOSSMON_ALLOW_PRESET` to that preset. Then add the token to `.env`: the first command reads it without echo, so it stays out of shell history and `ps`, and writes the `LOSSMON_TOKEN=` line, replacing any existing one (run it again to change the token; it works in bash and zsh). Then start the client.
+Replace `<version>` with the release tag you are installing; it must be a release that includes `deploy/client` (v0.3.0 or later). Edit `.env` and set `LOSSMON_VERSION`, `LOSSMON_SERVER_URL` and `LOSSMON_LOCATION`; for a preset other than `logos.dev` and `logos.test`, also set `LOSSMON_ALLOW_PRESET` to that preset. Then add the token to `.env` with the command below, which reads it without echo, so it stays out of shell history and `ps`, and writes the `LOSSMON_TOKEN=` line, replacing any existing one (it works in bash and zsh). It is a single line so that it can be pasted whole; do not paste anything after it. Then start the client.
 
 ```
-printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo
-case $t in *\'*) echo "the token must not contain a single quote" >&2 ;; *) (umask 077; { grep -v '^LOSSMON_TOKEN=' .env; printf "LOSSMON_TOKEN='%s'\n" "$t"; } > .env.new) && mv .env.new .env ;; esac
-unset t
+printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; case $t in *\'*) echo "the token must not contain a single quote" >&2 ;; *) rm -f .env.new; (umask 077; { grep -v '^LOSSMON_TOKEN=' .env; printf "LOSSMON_TOKEN='%s'\n" "$t"; } > .env.new) && mv .env.new .env ;; esac; unset t
+```
+
+```
 docker compose up -d --build
 ```
 
@@ -76,10 +77,11 @@ docker compose up -d --build
 | Stop, keep state | `docker compose stop` |
 | Start again | `docker compose start` |
 | Stop and remove the container | `docker compose down` |
+| Change the token | run the token command above again, then `docker compose up -d --force-recreate` |
 | Upgrade | `git fetch --depth 1 origin tag v<new> && git checkout v<new>`, set the new `LOSSMON_VERSION` in `.env`, then `docker compose up -d --build` |
 | Check the version | `docker compose run --rm client --version` |
 
-Settings come from `.env`: `LOSSMON_SERVER_URL`, `LOSSMON_LOCATION`, `LOSSMON_PRESET`, `LOSSMON_MODE`, `LOSSMON_ROLE` and `LOSSMON_RATE`. Any other option in [Run](#run) is passed the same way, as `LOSSMON_<NAME>` under `environment:` in `compose.yaml`. Changing `.env`, including the token, takes effect with `docker compose up -d`.
+Settings come from `.env`: `LOSSMON_SERVER_URL`, `LOSSMON_LOCATION`, `LOSSMON_PRESET`, `LOSSMON_MODE`, `LOSSMON_ROLE` and `LOSSMON_RATE`. Any other option in [Run](#run) is passed the same way, as `LOSSMON_<NAME>` under `environment:` in `compose.yaml`. Changing `.env` takes effect with `docker compose up -d`; after changing the token, run `docker compose up -d --force-recreate`, because Compose does not notice a changed secret value and would keep the old token.
 
 The client id and node state live in the `lossmon-client_data` volume and survive restarts and upgrades. `docker compose down -v` deletes them, and the client registers again as a new client.
 
