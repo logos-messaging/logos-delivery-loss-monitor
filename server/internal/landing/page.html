@@ -36,29 +36,24 @@ footer { margin-top: 3rem; font-size: 0.85em; color: #555; }
 <label for="tab-binary">Binary</label>
 
 <div class="panel" id="panel-docker">
-<p>Keeps running after you close the SSH session and comes back after a reboot. Needs Docker with Compose v2.6.0 or later on linux/amd64.</p>
+<p>Keeps running after you close the SSH session and comes back after a reboot. Needs Docker with Compose v2 on linux/amd64.</p>
 {{if .Release -}}
-<h2>1. Configure</h2>
 {{template "location" . -}}
 <pre><code>git clone --depth 1 --branch v{{.Version}} https://github.com/logos-messaging/logos-delivery-loss-monitor
 cd logos-delivery-loss-monitor/deploy/client
-cat &gt; .env &lt;&lt;'EOF'
-LOSSMON_VERSION={{.Version}}
+cp .env.example .env</code></pre>
+<p>Edit <code>.env</code> and set these lines. The token is from the admin.</p>
+<pre><code>LOSSMON_VERSION={{.Version}}
 LOSSMON_SERVER_URL={{or .PublicURL "https://<server>"}}
 LOSSMON_LOCATION={{or .Location "<location>"}}
+LOSSMON_TOKEN=&lt;token&gt;
 LOSSMON_PRESET={{.Preset}}
 {{if .AllowPreset}}LOSSMON_ALLOW_PRESET={{.Preset}}
-{{end}}EOF</code></pre>
-
-<h2>2. Token</h2>
-<p>Get the token from the admin. Add it to <code>.env</code>. It is read without echo, so it stays out of shell history and <code>ps</code>, and it replaces any earlier token line. It is a single line, so paste it whole:</p>
-<pre><code>printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; case $t in *\'*) echo "the token must not contain a single quote" &gt;&amp;2 ;; *) rm -f .env.new; (umask 077; { grep -v '^LOSSMON_TOKEN=' .env; printf "LOSSMON_TOKEN='%s'\n" "$t"; } &gt; .env.new) &amp;&amp; mv .env.new .env ;; esac; unset t</code></pre>
-<p>Compose passes the token to the container as a secret file. It is not an environment variable of the container or an argument.</p>
-
-<h2>3. Run</h2>
+{{end}}</code></pre>
+<p>Then start it:</p>
 <pre><code>docker compose up -d --build
 docker compose logs -f client</code></pre>
-<p>To change the token later, run the token command again, then <code>docker compose up -d --force-recreate</code>. The client runs in the background. Ctrl-C stops following the logs, not the client. Stop it with <code>docker compose stop</code>. Restarting is safe: the client ID is kept in a Docker volume. More commands are in the <a href="https://github.com/logos-messaging/logos-delivery-loss-monitor/blob/v{{.Version}}/client/README.md#run-detached-with-docker">client README</a>.</p>
+<p>Ctrl-C stops following the logs, not the client. To change a setting, edit <code>.env</code> and run <code>docker compose up -d</code>. To change the token, run <code>docker compose down -v</code> first, because the client ID is bound to its token. More commands are in the <a href="https://github.com/logos-messaging/logos-delivery-loss-monitor/blob/v{{.Version}}/client/README.md#run-detached-with-docker">client README</a>.</p>
 {{- else -}}
 <p>This server is not a release build, so there is no matching client version to pin. Ask the admin which version to use, then follow the Docker steps in the <a href="https://github.com/logos-messaging/logos-delivery-loss-monitor/blob/main/client/README.md#run-detached-with-docker">client README</a>.</p>
 {{- end}}

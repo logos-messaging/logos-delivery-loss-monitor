@@ -175,11 +175,8 @@ func TestDockerTabIsDefault(t *testing.T) {
 		"LOSSMON_ALLOW_PRESET=status.prod",
 		"git clone --depth 1 --branch v0.2.0 ",
 		"deploy/client",
-		"LOSSMON_TOKEN='%s'",
-		"rm -f .env.new",
-		"&gt; .env.new",
-		"mv .env.new .env ;; esac; unset t",
-		"docker compose up -d --force-recreate",
+		"cp .env.example .env",
+		"LOSSMON_TOKEN=&lt;token&gt;",
 		"docker compose up -d --build",
 		"docker compose logs -f client",
 	} {
@@ -187,8 +184,10 @@ func TestDockerTabIsDefault(t *testing.T) {
 			t.Errorf("docker panel lacks %q", want)
 		}
 	}
-	if strings.Contains(panel, "read -r t; stty echo; echo\n") {
-		t.Error("token read and write are on separate lines")
+	for _, unwanted := range []string{"stty", "umask", ".env.new", "--force-recreate"} {
+		if strings.Contains(panel, unwanted) {
+			t.Errorf("docker panel contains %q", unwanted)
+		}
 	}
 	if strings.Contains(panel, "compose.yaml") {
 		t.Error("docker panel asks to edit compose.yaml")
