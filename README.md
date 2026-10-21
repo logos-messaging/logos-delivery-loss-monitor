@@ -28,7 +28,7 @@ curl --proto '=https' --tlsv1.2 -fsSL https://github.com/logos-messaging/logos-d
 With a pinned version, set the variables on `sh`:
 
 ```
-curl --proto '=https' --tlsv1.2 -fsSL https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh | LOSSMON_VERSION=0.1.0 sh
+curl --proto '=https' --tlsv1.2 -fsSL https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh | LOSSMON_VERSION=0.2.0 sh
 ```
 
 To read the script before running it:
@@ -42,7 +42,7 @@ sh install.sh
 Manually, with the checksum verified (macOS: `OS=darwin`, `ARCH=arm64` or `amd64`, and `shasum -a 256` instead of `sha256sum`):
 
 ```
-V=0.1.0; OS=linux; ARCH=amd64
+V=0.2.0; OS=linux; ARCH=amd64
 f=lossmon-client_${V}_${OS}_${ARCH}.tar.gz
 base=https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/download/v$V
 curl --proto '=https' --tlsv1.2 -fL -O "$base/$f" -O "$base/SHA256SUMS"
