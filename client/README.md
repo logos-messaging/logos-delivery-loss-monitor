@@ -44,6 +44,37 @@ lossmon-client --data-dir="$HOME/.local/share/lossmon" --server-url=... --token-
 
 A binary downloaded in a browser is quarantined by macOS; clear it with `xattr -d com.apple.quarantine lossmon-client`. Downloads through `curl` are not affected.
 
+## Run detached with Docker
+
+For a client that keeps running after the SSH session closes and comes back after a reboot. The image downloads the latest release binary, verifies its checksum and runs it as a non-root user. It is `linux/amd64` only; on arm64 Docker runs it under emulation. Needs Docker with Compose v2.
+
+```
+git clone --depth 1 --branch v<version> https://github.com/logos-messaging/logos-delivery-loss-monitor
+cd logos-delivery-loss-monitor/deploy/client
+cp .env.example .env
+```
+
+Replace `<version>` with the release you are installing (v0.3.0 or later, the first with `deploy/client`). Edit `.env` and set `LOSSMON_SERVER_URL`, `LOSSMON_LOCATION` and `LOSSMON_TOKEN`. The token is the server's `report` token from the server admin (see [Tokens](../deploy/README.md#tokens)). For a preset other than `logos.dev` and `logos.test`, also set `LOSSMON_ALLOW_PRESET` to that preset. Then start the client:
+
+```
+docker compose up -d --build
+```
+
+The client logs a warning that the token is passed directly; that is expected here.
+
+Docker caches the download, so a rebuild needs `--no-cache` to pick up a newer release. To pin a release, set `LOSSMON_VERSION` (for example `0.3.0`) in `.env`.
+
+| Task | Command (in `deploy/client`) |
+|---|---|
+| Follow the logs | `docker compose logs -f client` |
+| Stop / start | `docker compose stop` / `docker compose start` |
+| Remove the container | `docker compose down` |
+| Change a setting | edit `.env`, then `docker compose up -d` |
+| Change the token | `docker compose down -v`, edit `.env`, then `docker compose up -d` (a client id is bound to its token) |
+| Upgrade | `git fetch --depth 1 origin tag v<new> && git checkout v<new>`, then `docker compose build --no-cache && docker compose up -d` |
+
+The client id and node state live in the `lossmon-client_data` volume and survive restarts and upgrades. `docker compose down -v` deletes them, and the client then registers as a new client.
+
 ## Build
 
 Logos Delivery `v0.39.2` is a Nimble dependency (`lossmon_client.nimble`), locked in `nimble.lock` to the dependency set that release was tested with. There are no submodules.

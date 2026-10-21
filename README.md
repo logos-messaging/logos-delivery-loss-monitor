@@ -59,6 +59,8 @@ lossmon-client --data-dir="$HOME/.local/share/lossmon" --server-url=... --token-
 
 A binary downloaded in a browser is quarantined by macOS; clear it with `xattr -d com.apple.quarantine lossmon-client`. Downloads through `curl` are not affected.
 
+To keep a client running after you log out of SSH, see [Run detached with Docker](client/README.md#run-detached-with-docker).
+
 ## Binaries
 
 Each [release](https://github.com/logos-messaging/logos-delivery-loss-monitor/releases) ships `lossmon-server` (Linux and macOS, amd64 and arm64) and `lossmon-client` (Linux amd64, macOS amd64 and arm64) with a `SHA256SUMS` file.

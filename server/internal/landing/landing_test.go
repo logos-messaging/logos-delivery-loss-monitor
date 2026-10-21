@@ -159,6 +159,65 @@ func TestVersionPinning(t *testing.T) {
 	}
 }
 
+func TestDockerTabIsDefault(t *testing.T) {
+	body := render(t, "0.2.0", "PRESET", "status.prod", "CLUSTER_ID", "16", "ALLOW_PRESET", "status.prod", "LOCATIONS", "eu")
+	docker := strings.Index(body, `id="tab-docker" checked`)
+	binary := strings.Index(body, `id="tab-binary"`)
+	if docker < 0 || binary < docker || strings.Contains(body, `id="tab-binary" checked`) {
+		t.Fatalf("docker tab is not the checked first tab:\n%s", body)
+	}
+	panel := body[strings.Index(body, `id="panel-docker"`):strings.Index(body, `id="panel-binary"`)]
+	for _, want := range []string{
+		"LOSSMON_SERVER_URL=https://lossmon.example.org",
+		"LOSSMON_LOCATION=eu",
+		"LOSSMON_PRESET=status.prod",
+		"LOSSMON_ALLOW_PRESET=status.prod",
+		"git clone --depth 1 --branch v0.2.0 ",
+		"deploy/client",
+		"cp .env.example .env",
+		"LOSSMON_TOKEN=&lt;token&gt;",
+		"docker compose up -d --build",
+		"docker compose logs -f client",
+	} {
+		if !strings.Contains(panel, want) {
+			t.Errorf("docker panel lacks %q", want)
+		}
+	}
+	for _, unwanted := range []string{"LOSSMON_VERSION", "stty", "umask", ".env.new", "--force-recreate"} {
+		if strings.Contains(panel, unwanted) {
+			t.Errorf("docker panel contains %q", unwanted)
+		}
+	}
+	if strings.Contains(panel, "compose.yaml") {
+		t.Error("docker panel asks to edit compose.yaml")
+	}
+	if !strings.Contains(body[strings.Index(body, `id="panel-binary"`):], "lossmon-client") {
+		t.Error("binary panel lacks the client run command")
+	}
+}
+
+func TestDockerTabDefaultPresetHasNoAllowPreset(t *testing.T) {
+	body := render(t, "0.2.0")
+	panel := body[strings.Index(body, `id="panel-docker"`):strings.Index(body, `id="panel-binary"`)]
+	if strings.Contains(panel, "ALLOW_PRESET") {
+		t.Errorf("default preset docker panel mentions ALLOW_PRESET:\n%s", panel)
+	}
+}
+
+func TestPanelsDoNotWidenPage(t *testing.T) {
+	if !strings.Contains(render(t, "0.2.0"), ".tabs > .panel { display: none; flex-basis: 100%; min-width: 0; }") {
+		t.Error("panel rule lacks min-width: 0")
+	}
+}
+
+func TestDockerTabNonRelease(t *testing.T) {
+	body := render(t, "dev")
+	panel := body[strings.Index(body, `id="panel-docker"`):strings.Index(body, `id="panel-binary"`)]
+	if !strings.Contains(panel, "not a release build") || strings.Contains(panel, "docker compose up") {
+		t.Errorf("non-release docker panel:\n%s", panel)
+	}
+}
+
 func TestIsRelease(t *testing.T) {
 	for v, want := range map[string]bool{
 		"0.2.0": true, "1.10.3": true, "0.2.0-rc.1": true,
