@@ -14,7 +14,10 @@ die() {
 
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64) platform=linux_amd64 ;;
-  Darwin-x86_64) platform=darwin_amd64 ;;
+  Darwin-x86_64)
+    platform=darwin_amd64
+    [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" = 1 ] && platform=darwin_arm64
+    ;;
   Darwin-arm64) platform=darwin_arm64 ;;
   *) die "unsupported platform $(uname -s) $(uname -m); supported: linux amd64, darwin amd64, darwin arm64" ;;
 esac
@@ -41,6 +44,7 @@ archive=lossmon-client_${version}_${platform}.tar.gz
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
+trap 'exit 1' INT TERM HUP
 
 echo "Downloading lossmon-client $version ($platform)"
 curl -fsSL -o "$tmp/$archive" "$base/$archive" || die "cannot download $base/$archive"
@@ -51,7 +55,8 @@ grep " $archive\$" "$tmp/SHA256SUMS" > "$tmp/check" || die "$archive is not list
 
 tar -xzf "$tmp/$archive" -C "$tmp"
 mkdir -p "$install_dir"
-install -m 755 "$tmp/${archive%.tar.gz}/lossmon-client" "$install_dir/lossmon-client"
+install -m 755 "$tmp/${archive%.tar.gz}/lossmon-client" "$install_dir/.lossmon-client.$$"
+mv -f "$install_dir/.lossmon-client.$$" "$install_dir/lossmon-client"
 
 echo "Installed $install_dir/lossmon-client"
 case ":$PATH:" in

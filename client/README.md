@@ -10,6 +10,12 @@ Linux amd64, macOS amd64 and arm64. Installs to `~/.local/bin` without sudo; set
 curl -fsSL https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh | sh
 ```
 
+With a pinned version, set the variables on `sh`:
+
+```
+curl -fsSL https://github.com/logos-messaging/logos-delivery-loss-monitor/releases/latest/download/install.sh | LOSSMON_VERSION=0.1.0 sh
+```
+
 To read the script before running it:
 
 ```

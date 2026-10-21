@@ -237,7 +237,8 @@ jobs:
           cp -R "$RUNNER_TEMP/dist" "$RUNNER_TEMP/bad"
           zeros=$(printf '%064d' 0)
           sed "s/^[0-9a-f]\{64\}/$zeros/" "$RUNNER_TEMP/dist/SHA256SUMS" > "$RUNNER_TEMP/bad/SHA256SUMS"
-          if sh "$RUNNER_TEMP/dist/install.sh"; then echo "installed despite bad checksum" >&2; exit 1; fi
+          if sh "$RUNNER_TEMP/dist/install.sh" 2> "$RUNNER_TEMP/bad.err"; then echo "installed despite bad checksum" >&2; exit 1; fi
+          grep -q 'checksum mismatch' "$RUNNER_TEMP/bad.err" || { cat "$RUNNER_TEMP/bad.err" >&2; exit 1; }
           test ! -e "$LOSSMON_INSTALL_DIR/lossmon-client"
 
   publish:
