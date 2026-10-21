@@ -26,7 +26,8 @@ func gapRank(reason string) int {
 }
 
 // gap is a period the receiver's reports do not cover. An offline gap is a stretch with no
-// heartbeats: only publishes made during it are affected, unlike a lost-report gap.
+// heartbeats: only publishes made during it, or up to GRACE before it, are affected, unlike a
+// lost-report gap.
 type gap struct {
 	from, to int64
 	reason   string

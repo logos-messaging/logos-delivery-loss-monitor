@@ -203,6 +203,27 @@ func TestOfflineGapExcludesPublishInsideAllowanceBeforeSilence(t *testing.T) {
 	h.advance(time.Second)
 	h.send(w.p, h.pub(0))
 	h.send(w.b, h.rcv(0, "live"))
+	h.beats(20*time.Second, w.p, w.a, w.b)
+	h.beats(2*time.Minute, w.p, w.b)
+	h.advance(10 * time.Second)
+	h.send(w.a, h.hb())
+	h.settle(w.p, w.a, w.b)
+	h.expect("lossmon_lost_total", 0)
+	h.expect("lossmon_indeterminate_total", 1, "reason", "receiver_gap")
+}
+
+func TestMergedSeqAndOfflineGapKeepsFullWindow(t *testing.T) {
+	w := newWorld(t, func(c *config.Config) { c.MaxGapsPerSession = 2 })
+	h := w.h
+	h.advance(time.Second)
+	h.send(w.p, h.pub(0))
+	h.send(w.b, h.rcv(0, "live"))
+	h.beats(time.Minute, w.p, w.a, w.b)
+	h.beats(2*time.Minute, w.p, w.b)
+	h.advance(10 * time.Second)
+	h.skipSeq(w.a, 1)
+	h.send(w.a, h.hb())
+	h.beats(20*time.Second, w.p, w.a, w.b)
 	h.beats(2*time.Minute, w.p, w.b)
 	h.advance(10 * time.Second)
 	h.send(w.a, h.hb())

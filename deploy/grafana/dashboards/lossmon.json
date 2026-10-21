@@ -260,7 +260,7 @@
       "id": 5,
       "type": "stat",
       "title": "Publishes in flight (awaiting window)",
-      "description": "Publishes still waiting out WINDOW + GRACE before they are decided.",
+      "description": "Publishes still waiting out WINDOW + GRACE before they are decided. ≈ publish rate × (WINDOW + GRACE).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -309,8 +309,8 @@
           "legendFormat": "",
           "refId": "A",
           "editorMode": "code",
-          "range": false,
-          "instant": true
+          "range": true,
+          "instant": false
         }
       ]
     },
