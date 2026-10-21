@@ -10,9 +10,27 @@ runs:
         parent-nimble-install-directory: ${{ runner.temp }}
         nimble-install-directory: nimble
         repo-token: ${{ github.token }}
+    - name: Verify the installed Nimble
+      shell: bash
+      run: |
+        set -eu
+        case "$RUNNER_OS-$RUNNER_ARCH" in
+          Linux-X64) want=f8b05a723efd3c4b5481a59a66773372c1a708f4242eba1bb7dbcb7aae60d6e8 ;;
+          macOS-X64) want=14587fdcafe4f8ac2ce32c42f8de989b07b5ac3b06224c51b5adf8e8abf88950 ;;
+          macOS-ARM64) want=b3762b800b69c4084753dff5b022dcdf7503803c333848ff454661c030a010e8 ;;
+          *) echo "no pinned Nimble checksum for $RUNNER_OS-$RUNNER_ARCH" >&2; exit 1 ;;
+        esac
+        got=$(shasum -a 256 "$RUNNER_TEMP/nimble/bin/nimble" | cut -d' ' -f1)
+        if [ "$got" != "$want" ]; then
+          echo "nimble checksum mismatch: got $got, want $want" >&2
+          exit 1
+        fi
     - name: Use the installed Nimble
       shell: bash
       run: echo "NIMBLE_BIN=$RUNNER_TEMP/nimble/bin" >> "$GITHUB_ENV"
+    - id: image
+      shell: bash
+      run: echo "os=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
     - id: deps-cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -20,7 +38,7 @@ runs:
           client/nimbledeps
           client/nimble.paths
           client/build/librln_*.a
-        key: client-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('client/nimble.lock', 'client/lossmon_client.nimble', 'client/Makefile', 'client/scripts/*') }}
+        key: client-${{ runner.os }}-${{ runner.arch }}-${{ steps.image.outputs.os }}-${{ hashFiles('client/nimble.lock', 'client/lossmon_client.nimble', 'client/Makefile', 'client/scripts/*') }}
     - name: Mark cached deps as built
       if: steps.deps-cache.outputs.cache-hit == 'true'
       shell: bash

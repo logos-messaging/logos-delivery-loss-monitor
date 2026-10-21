@@ -11,6 +11,9 @@ on:
       - ".github/actions/client-deps/**"
       - "client/Dockerfile"
       - "client/Makefile"
+      - "client/nimble.lock"
+      - "client/lossmon_client.nimble"
+      - "client/scripts/**"
   workflow_dispatch:
     inputs:
       version:
