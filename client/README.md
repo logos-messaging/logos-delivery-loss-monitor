@@ -53,9 +53,14 @@ Needs Docker with Compose v2.
 ```
 git clone https://github.com/logos-messaging/logos-delivery-loss-monitor
 cd logos-delivery-loss-monitor/deploy/client
-cp .env.example .env              # set LOSSMON_VERSION, LOSSMON_SERVER_URL, LOSSMON_LOCATION
-printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; printf '%s\n' "$t" > token; unset t   # keeps the token out of shell history
-chmod 644 token                   # the container user (uid 10001) must be able to read it
+cp .env.example .env
+```
+
+Edit `.env` and set `LOSSMON_VERSION`, `LOSSMON_SERVER_URL` and `LOSSMON_LOCATION`. Then enter the token, which is read without echo so it stays out of shell history, and start the client. `chmod 644` lets the container user (uid 10001) read the token.
+
+```
+printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; printf '%s\n' "$t" > token; unset t
+chmod 644 token
 docker compose up -d --build
 ```
 
