@@ -46,7 +46,7 @@ A binary downloaded in a browser is quarantined by macOS; clear it with `xattr -
 
 ## Run detached with Docker
 
-For a client that keeps running after the SSH session closes and comes back after a reboot. The image downloads the release binary of the pinned version, verifies its checksum, and runs it as a non-root user from an otherwise empty image. It is `linux/amd64` only. On arm64 Docker Desktop runs it under emulation. On arm64 Linux, register emulation once first: `docker run --privileged --rm tonistiigi/binfmt --install amd64`.
+For a client that keeps running after the SSH session closes and comes back after a reboot. The image downloads the release binary of the pinned version, verifies its checksum, and runs it as a non-root user from an otherwise empty image. It is `linux/amd64` only. On arm64 Docker Desktop runs it under emulation. On arm64 Linux, install a persistent registration (Debian/Ubuntu: `sudo apt install qemu-user-static binfmt-support`), or re-run `docker run --privileged --rm tonistiigi/binfmt --install amd64` after every reboot.
 
 Needs Docker with Compose v2.
 
@@ -54,8 +54,7 @@ Needs Docker with Compose v2.
 git clone https://github.com/logos-messaging/logos-delivery-loss-monitor
 cd logos-delivery-loss-monitor/deploy/client
 cp .env.example .env              # set LOSSMON_VERSION, LOSSMON_SERVER_URL, LOSSMON_LOCATION
-read -rs -p 'Token: ' LOSSMON_TOKEN; echo   # bash or zsh; keeps the token out of shell history
-printf '%s\n' "$LOSSMON_TOKEN" > token; unset LOSSMON_TOKEN
+printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; printf '%s\n' "$t" > token; unset t   # keeps the token out of shell history
 chmod 644 token                   # the container user (uid 10001) must be able to read it
 docker compose up -d --build
 ```
