@@ -8,8 +8,12 @@ on:
       - ".github/workflows/release.yml"
       - ".github/scripts/package.sh"
       - "install.sh"
+      - ".github/actions/client-deps/**"
       - "client/Dockerfile"
       - "client/Makefile"
+      - "client/nimble.lock"
+      - "client/lossmon_client.nimble"
+      - "client/scripts/**"
   workflow_dispatch:
     inputs:
       version:
@@ -155,6 +159,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: ./.github/actions/client-deps
       - name: Build
         working-directory: client
         env:
