@@ -85,11 +85,10 @@ Settings come from `.env`: `LOSSMON_SERVER_URL`, `LOSSMON_LOCATION`, `LOSSMON_PR
 
 The client id and node state live in the `lossmon-client_data` volume and survive restarts and upgrades. `docker compose down -v` deletes them, and the client registers again as a new client.
 
-Without Compose, the token is a file that you bind-mount, at `/run/token` here. Create it from the repository root; `chmod 644` lets the container user (uid 10001) read it, and on a shared host `sudo chown 10001 deploy/client/token && chmod 400 deploy/client/token` keeps it private instead:
+Without Compose, the token is a file that you bind-mount, at `/run/token` here. Create it from the repository root; `chmod 644` lets the container user (uid 10001) read it, and on a shared host `sudo chown 10001 deploy/client/token && chmod 400 deploy/client/token` keeps it private instead. The command is a single line so that it can be pasted whole; do not paste anything after it:
 
 ```
-printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; printf '%s\n' "$t" > deploy/client/token; unset t
-chmod 644 deploy/client/token
+printf 'Token: '; stty -echo; IFS= read -r t; stty echo; echo; printf '%s\n' "$t" > deploy/client/token; chmod 644 deploy/client/token; unset t
 ```
 
 Then build and run, still from the repository root:
