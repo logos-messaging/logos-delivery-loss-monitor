@@ -42,6 +42,7 @@ The server answers `GET /` with a static page that tells volunteers how to insta
 - `LOSSMON_PUBLIC_URL` is the URL shown in the run command. Compose derives it from `LOSSMON_PUBLIC_HOST` (`https://<host>`); with no host it stays empty and the page shows `https://<server>`. Outside compose it must be `https://host[:port]` with no path, query or credentials, and a plain ASCII hostname (IDNs in punycode).
 - `LOSSMON_LOCATIONS` entries and the preset may only use `a-z`, `0-9`, `.`, `_` and `-`, and must start with a letter or digit. The server refuses to start otherwise.
 - The install line is pinned to the server's own version. The image gets it from `LOSSMON_SERVER_VERSION`; when that is empty or not a release (`dev`), the page says the server is not a release build and shows no install line.
+- The page is the only route served without authentication. The server must keep authenticating every `/v1/*` route, and nothing else unauthenticated may be added to `api.Handler()`.
 
 Release flow, once the GitHub release for the tag is published (its draft links return 404 until then):
 
