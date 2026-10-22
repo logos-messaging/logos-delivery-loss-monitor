@@ -66,10 +66,10 @@ If the server restarts in a loop after the upgrade, `docker compose logs --tail 
 Once the GitHub release for the tag is published (its draft links return 404 until then):
 
 ```
-git fetch --tags && git checkout v0.2.0
-# deploy/.env: LOSSMON_SERVER_VERSION=0.2.0
+git fetch --tags && git checkout v0.3.0
+# deploy/.env: LOSSMON_SERVER_VERSION=0.3.0
 docker compose --profile public up -d --build
-docker compose exec server lossmon-server --version   # lossmon-server 0.2.0
+docker compose exec server lossmon-server --version   # lossmon-server 0.3.0
 ```
 
 ## Tokens

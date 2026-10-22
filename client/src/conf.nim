@@ -21,7 +21,7 @@ type
     required
 
 const
-  AppVersion* = "0.2.0"
+  AppVersion* = "0.3.0"
   ExitConfig* = 78
   AllowedPresets* = ["logos.dev", "logos.test"]
 

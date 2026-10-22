@@ -1,4 +1,4 @@
-version = "0.2.0"
+version = "0.3.0"
 author = "Logos"
 description = "Message loss monitor client for Logos Delivery"
 license = "MIT or Apache License 2.0"
