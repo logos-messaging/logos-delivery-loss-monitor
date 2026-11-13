@@ -4,7 +4,7 @@ description: Install Nimble and restore the cached client dependencies
 runs:
   using: composite
   steps:
-    - uses: nim-lang/setup-nimble-action@9b328822bb8acad01c5bcc1a0ffe3a0084013156 # v2.0.0
+    - uses: nim-lang/setup-nimble-action@a131f58ccfd21bc926d1fee0cffabee76898dfcf # v2.1.0
       with:
         nimble-version: "0.26.0"
         parent-nimble-install-directory: ${{ runner.temp }}
