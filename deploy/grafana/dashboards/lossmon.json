@@ -18,6 +18,24 @@
   "templating": {
     "list": [
       {
+        "name": "preset",
+        "label": "Preset",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "prometheus"
+        },
+        "query": {
+          "query": "label_values(up, preset)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "definition": "label_values(up, preset)",
+        "refresh": 1,
+        "sort": 1,
+        "includeAll": false,
+        "multi": false
+      },
+      {
         "name": "window",
         "label": "Window",
         "type": "custom",
@@ -131,7 +149,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum(increase(lossmon_lost_total[$window])) or vector(0)) / sum(increase(lossmon_expected_total[$window]))",
+          "expr": "(sum(increase(lossmon_lost_total{preset=~\"$preset\"}[$window])) or vector(0)) / sum(increase(lossmon_expected_total{preset=~\"$preset\"}[$window]))",
           "legendFormat": "",
           "refId": "A",
           "editorMode": "code",
@@ -189,7 +207,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(lossmon_expected_total[$window]))",
+          "expr": "sum(increase(lossmon_expected_total{preset=~\"$preset\"}[$window]))",
           "legendFormat": "",
           "refId": "A",
           "editorMode": "code",
@@ -247,7 +265,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(lossmon_active_sessions)",
+          "expr": "sum(lossmon_active_sessions{preset=~\"$preset\"})",
           "legendFormat": "",
           "refId": "A",
           "editorMode": "code",
@@ -260,7 +278,7 @@
       "id": 5,
       "type": "stat",
       "title": "Publishes in flight (awaiting window)",
-      "description": "Publishes still waiting out WINDOW + GRACE before they are decided. ≈ publish rate × (WINDOW + GRACE).",
+      "description": "Publishes still waiting out WINDOW + GRACE before they are decided. \u2248 publish rate \u00d7 (WINDOW + GRACE).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -305,7 +323,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "lossmon_pending_publishes",
+          "expr": "lossmon_pending_publishes{preset=~\"$preset\"}",
           "legendFormat": "",
           "refId": "A",
           "editorMode": "code",
@@ -363,7 +381,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "lossmon_pending_orphans",
+          "expr": "lossmon_pending_orphans{preset=~\"$preset\"}",
           "legendFormat": "",
           "refId": "A",
           "editorMode": "code",
@@ -433,7 +451,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum by (publisher_mode, receiver_mode) (increase(lossmon_lost_total[$window])) or 0 * sum by (publisher_mode, receiver_mode) (increase(lossmon_expected_total[$window]))) / sum by (publisher_mode, receiver_mode) (increase(lossmon_expected_total[$window]))",
+          "expr": "(sum by (publisher_mode, receiver_mode) (increase(lossmon_lost_total{preset=~\"$preset\"}[$window])) or 0 * sum by (publisher_mode, receiver_mode) (increase(lossmon_expected_total{preset=~\"$preset\"}[$window]))) / sum by (publisher_mode, receiver_mode) (increase(lossmon_expected_total{preset=~\"$preset\"}[$window]))",
           "legendFormat": "{{publisher_mode}} \u2192 {{receiver_mode}}",
           "refId": "A",
           "editorMode": "code",
@@ -490,7 +508,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "(sum by (publisher_location, receiver_location) (increase(lossmon_lost_total[$window])) or 0 * sum by (publisher_location, receiver_location) (increase(lossmon_expected_total[$window]))) / sum by (publisher_location, receiver_location) (increase(lossmon_expected_total[$window]))",
+          "expr": "(sum by (publisher_location, receiver_location) (increase(lossmon_lost_total{preset=~\"$preset\"}[$window])) or 0 * sum by (publisher_location, receiver_location) (increase(lossmon_expected_total{preset=~\"$preset\"}[$window]))) / sum by (publisher_location, receiver_location) (increase(lossmon_expected_total{preset=~\"$preset\"}[$window]))",
           "legendFormat": "{{publisher_location}} \u2192 {{receiver_location}}",
           "refId": "A",
           "editorMode": "code",
@@ -547,7 +565,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "lossmon_message_loss_ratio",
+          "expr": "lossmon_message_loss_ratio{preset=~\"$preset\"}",
           "legendFormat": "{{publisher_mode}}/{{publisher_location}} \u2192 {{receiver_mode}}/{{receiver_location}} {{publisher_anonymity}} {{content_topic}}",
           "refId": "A",
           "editorMode": "code",
@@ -616,7 +634,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_expected_total[$__rate_interval]))",
+          "expr": "sum(rate(lossmon_expected_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "expected",
           "refId": "A",
           "editorMode": "code",
@@ -628,7 +646,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_delivered_total[$__rate_interval]))",
+          "expr": "sum(rate(lossmon_delivered_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "delivered",
           "refId": "B",
           "editorMode": "code",
@@ -640,7 +658,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_lost_total[$__rate_interval])) or vector(0)",
+          "expr": "sum(rate(lossmon_lost_total{preset=~\"$preset\"}[$__rate_interval])) or vector(0)",
           "legendFormat": "lost",
           "refId": "C",
           "editorMode": "code",
@@ -652,7 +670,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_late_total[$__rate_interval])) or vector(0)",
+          "expr": "sum(rate(lossmon_late_total{preset=~\"$preset\"}[$__rate_interval])) or vector(0)",
           "legendFormat": "late",
           "refId": "D",
           "editorMode": "code",
@@ -664,7 +682,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_duplicate_total[$__rate_interval])) or vector(0)",
+          "expr": "sum(rate(lossmon_duplicate_total{preset=~\"$preset\"}[$__rate_interval])) or vector(0)",
           "legendFormat": "duplicate",
           "refId": "E",
           "editorMode": "code",
@@ -724,7 +742,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (source) (rate(lossmon_delivered_total[$__rate_interval]))",
+          "expr": "sum by (source) (rate(lossmon_delivered_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "{{source}}",
           "refId": "A",
           "editorMode": "code",
@@ -784,7 +802,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (reason) (rate(lossmon_indeterminate_total[$__rate_interval]))",
+          "expr": "sum by (reason) (rate(lossmon_indeterminate_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "{{reason}}",
           "refId": "A",
           "editorMode": "code",
@@ -840,7 +858,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_published_total[$__rate_interval]))",
+          "expr": "sum(rate(lossmon_published_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "published",
           "refId": "A",
           "editorMode": "code",
@@ -852,7 +870,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_send_queued_total[$__rate_interval])) or vector(0)",
+          "expr": "sum(rate(lossmon_send_queued_total{preset=~\"$preset\"}[$__rate_interval])) or vector(0)",
           "legendFormat": "queued",
           "refId": "B",
           "editorMode": "code",
@@ -864,7 +882,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_send_failed_total[$__rate_interval])) or vector(0)",
+          "expr": "sum(rate(lossmon_send_failed_total{preset=~\"$preset\"}[$__rate_interval])) or vector(0)",
           "legendFormat": "failed",
           "refId": "C",
           "editorMode": "code",
@@ -876,7 +894,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_unmatched_total[$__rate_interval])) or vector(0)",
+          "expr": "sum(rate(lossmon_unmatched_total{preset=~\"$preset\"}[$__rate_interval])) or vector(0)",
           "legendFormat": "unmatched receipts",
           "refId": "D",
           "editorMode": "code",
@@ -949,7 +967,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (mode, location, connection_status) (lossmon_active_sessions)",
+          "expr": "sum by (mode, location, connection_status) (lossmon_active_sessions{preset=~\"$preset\"})",
           "legendFormat": "{{mode}} {{location}} {{connection_status}}",
           "refId": "A",
           "editorMode": "code",
@@ -1005,7 +1023,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.5, sum by (le, publisher_mode, receiver_mode) (rate(lossmon_latency_seconds_bucket[$__rate_interval])))",
+          "expr": "histogram_quantile(0.5, sum by (le, publisher_mode, receiver_mode) (rate(lossmon_latency_seconds_bucket{preset=~\"$preset\"}[$__rate_interval])))",
           "legendFormat": "p50 {{publisher_mode}} \u2192 {{receiver_mode}}",
           "refId": "A",
           "editorMode": "code",
@@ -1017,7 +1035,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum by (le, publisher_mode, receiver_mode) (rate(lossmon_latency_seconds_bucket[$__rate_interval])))",
+          "expr": "histogram_quantile(0.95, sum by (le, publisher_mode, receiver_mode) (rate(lossmon_latency_seconds_bucket{preset=~\"$preset\"}[$__rate_interval])))",
           "legendFormat": "p95 {{publisher_mode}} \u2192 {{receiver_mode}}",
           "refId": "B",
           "editorMode": "code",
@@ -1086,7 +1104,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (mode, location) (increase(lossmon_client_reports_dropped_total[$__rate_interval]))",
+          "expr": "sum by (mode, location) (increase(lossmon_client_reports_dropped_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "{{mode}} {{location}}",
           "refId": "A",
           "editorMode": "code",
@@ -1142,7 +1160,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (reason) (increase(lossmon_skipped_total[$__rate_interval]))",
+          "expr": "sum by (reason) (increase(lossmon_skipped_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "{{reason}}",
           "refId": "A",
           "editorMode": "code",
@@ -1198,7 +1216,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (result) (rate(lossmon_ingest_records_total[$__rate_interval]))",
+          "expr": "sum by (result) (rate(lossmon_ingest_records_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "records {{result}}",
           "refId": "A",
           "editorMode": "code",
@@ -1210,7 +1228,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (reason) (rate(lossmon_coverage_gaps_total[$__rate_interval]))",
+          "expr": "sum by (reason) (rate(lossmon_coverage_gaps_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "gap {{reason}}",
           "refId": "B",
           "editorMode": "code",
@@ -1222,7 +1240,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum by (code) (rate(lossmon_api_rejections_total[$__rate_interval]))",
+          "expr": "sum by (code) (rate(lossmon_api_rejections_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "http {{code}}",
           "refId": "C",
           "editorMode": "code",
@@ -1278,7 +1296,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_foreign_received_total[$__rate_interval]))",
+          "expr": "sum(rate(lossmon_foreign_received_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "foreign (no probe marker)",
           "refId": "A",
           "editorMode": "code",
@@ -1290,7 +1308,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_unverified_probes_total[$__rate_interval]))",
+          "expr": "sum(rate(lossmon_unverified_probes_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "unverified (tag failed)",
           "refId": "B",
           "editorMode": "code",
@@ -1302,7 +1320,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(lossmon_replayed_total[$__rate_interval]))",
+          "expr": "sum(rate(lossmon_replayed_total{preset=~\"$preset\"}[$__rate_interval]))",
           "legendFormat": "replayed",
           "refId": "C",
           "editorMode": "code",

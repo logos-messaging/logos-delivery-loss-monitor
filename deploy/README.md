@@ -105,3 +105,15 @@ Clients on other hosts use the server's public URL and a token file:
 docker run --rm -v "$PWD/token:/run/token:ro" -v lossmon-data:/data lossmon-client:local \
   --server-url=https://lossmon.example.org --token-file=/run/token --preset=logos.dev --location=eu
 ```
+
+## More than one preset
+
+A server measures one preset. To measure another on the same host, run a second server next to the first and let both share Prometheus and Grafana:
+
+- `compose.override.yaml` adds the second server with its own `LOSSMON_PRESET`, `LOSSMON_PUBLIC_URL`, loopback port and secrets directory (`secrets/<name>/` with its own `probe_key` and `tokens`).
+- `local/prometheus.yml`, mounted over `prometheus/prometheus.yml`, scrapes both servers and gives each target a `preset` label.
+- `local/Caddyfile`, mounted over `Caddyfile`, adds a site for the second public host that proxies to the second server.
+
+The dashboard's Preset selector reads the `preset` label. With a single server and no label it stays empty and the dashboard shows that server. Series scraped before the label was added have no `preset` and drop out of the dashboard once it is set.
+
+`compose.override.yaml` and `local/` are ignored by git.
